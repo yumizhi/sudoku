@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sudoku Studio</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <div class="app-shell">
+    <header class="topbar glass">
+      <div class="title-wrap">
+        <p class="eyebrow">GitHub Pages Ready</p>
+        <h1>Sudoku Studio</h1>
+      </div>
+      <div class="status-wrap">
+        <label class="status-item" for="difficultySelect">
+          <span>难度</span>
+          <select id="difficultySelect">
+            <option value="easy">简单</option>
+            <option value="medium" selected>中等</option>
+            <option value="hard">困难</option>
+          </select>
+        </label>
+        <div class="status-item">
+          <span>计时</span>
+          <strong id="timerLabel">00:00</strong>
+        </div>
+        <div class="status-item">
+          <span>错误</span>
+          <strong id="mistakeLabel">0</strong>
+        </div>
+        <div class="status-item">
+          <span>模式</span>
+          <strong id="modeLabel">普通</strong>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="game glass">
+        <div class="game-shell">
+          <div class="board-pane">
+            <div id="board" class="board" role="grid" aria-label="Sudoku board"></div>
+          </div>
+
+          <div class="control-pane">
+            <div class="control-stack">
+              <div class="control-note">
+                <h2>操作面板</h2>
+                <p>数字盘用于输入；候选芯片用于预览当前格；提示会先解释逻辑，再决定是否应用。</p>
+              </div>
+
+              <section class="inspector-card">
+                <div class="panel-head">
+                  <h3>当前格</h3>
+                  <span id="cellBadge" class="panel-badge">未选中</span>
+                </div>
+                <p id="cellSummary" class="panel-copy">选择一个格子后，这里会显示它的位置、状态和候选数字。</p>
+                <div id="candidatePreview" class="candidate-preview" aria-label="Candidate preview"></div>
+              </section>
+
+              <section class="hint-detail">
+                <div class="panel-head">
+                  <h3>逻辑提示</h3>
+                  <span id="hintBadge" class="panel-badge">解释优先</span>
+                </div>
+                <p id="hintSummary" class="panel-copy">点击“提示”会先定位一条逻辑步骤，并解释为什么这一步成立。</p>
+                <div id="hintSteps" class="tutorial-steps"></div>
+                <button id="applyHintBtn" class="btn-primary apply-hint-btn" type="button" disabled>应用这一步</button>
+              </section>
+
+              <section class="inspector-card">
+                <div class="panel-head">
+                  <h3>全局观察</h3>
+                  <span id="globalInspectBadge" class="panel-badge">关闭</span>
+                </div>
+                <p class="panel-copy">这里专门观察整盘某个数字的分布，不会直接填数。</p>
+                <div id="digitInspector" class="digit-inspector" aria-label="Global digit inspector">
+                  <button class="inspect-digit-btn" type="button" data-inspect-digit="1">1</button>
+                  <button class="inspect-digit-btn" type="button" data-inspect-digit="2">2</button>
+                  <button class="inspect-digit-btn" type="button" data-inspect-digit="3">3</button>
+                  <button class="inspect-digit-btn" type="button" data-inspect-digit="4">4</button>
+                  <button class="inspect-digit-btn" type="button" data-inspect-digit="5">5</button>
+                  <button class="inspect-digit-btn" type="button" data-inspect-digit="6">6</button>
+                  <button class="inspect-digit-btn" type="button" data-inspect-digit="7">7</button>
+                  <button class="inspect-digit-btn" type="button" data-inspect-digit="8">8</button>
+                  <button class="inspect-digit-btn" type="button" data-inspect-digit="9">9</button>
+                </div>
+              </section>
+
+              <div class="toolbar">
+                <button id="newGameBtn" class="btn-primary" type="button">新开局</button>
+                <button id="hintBtn" class="btn-secondary" type="button">提示</button>
+                <button id="checkBtn" class="btn-quiet" type="button">检查</button>
+              </div>
+
+              <div id="numberPad" class="number-pad">
+                <button class="digit-btn" type="button" data-digit="1"><span class="digit">1</span><span class="count">0/9</span></button>
+                <button class="digit-btn" type="button" data-digit="2"><span class="digit">2</span><span class="count">0/9</span></button>
+                <button class="digit-btn" type="button" data-digit="3"><span class="digit">3</span><span class="count">0/9</span></button>
+                <button class="digit-btn" type="button" data-digit="4"><span class="digit">4</span><span class="count">0/9</span></button>
+                <button class="digit-btn" type="button" data-digit="5"><span class="digit">5</span><span class="count">0/9</span></button>
+                <button class="digit-btn" type="button" data-digit="6"><span class="digit">6</span><span class="count">0/9</span></button>
+                <button class="digit-btn" type="button" data-digit="7"><span class="digit">7</span><span class="count">0/9</span></button>
+                <button class="digit-btn" type="button" data-digit="8"><span class="digit">8</span><span class="count">0/9</span></button>
+                <button class="digit-btn" type="button" data-digit="9"><span class="digit">9</span><span class="count">0/9</span></button>
+              </div>
+
+              <div class="tool-row">
+                <button id="eraseBtn" class="btn-quiet" type="button">擦除</button>
+                <button id="noteBtn" class="btn-quiet" type="button" aria-pressed="false">笔记模式</button>
+                <button id="undoBtn" class="btn-quiet" type="button">撤销</button>
+                <button id="redoBtn" class="btn-quiet" type="button">重做</button>
+              </div>
+
+              <section class="tutorial-detail">
+                <div class="panel-head">
+                  <h3 id="tutorialDetailTitle">教程解析</h3>
+                  <span id="tutorialDetailTag" class="panel-badge">普通模式</span>
+                </div>
+                <p id="tutorialDetailSummary" class="panel-copy">教程模式会在这里给出更具体的观察路径；普通模式下会显示通用解题建议。</p>
+                <div id="tutorialDetailSteps" class="tutorial-steps"></div>
+              </section>
+
+              <p id="message" class="message" data-type="info" aria-live="polite">正在准备数独棋盘...</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="guide glass">
+        <div class="guide-head">
+          <h2>教程关卡</h2>
+          <p>每个关卡会加载一个专用棋盘，包含目标技巧与任务说明。</p>
+        </div>
+        <div id="tutorialList" class="tutorial-list"></div>
+        <div class="guide-foot">
+          <h3>技巧清单</h3>
+          <p>已覆盖：裸单、隐藏单、锁定候选、X-Wing。</p>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script type="module" src="scripts/app.js"></script>
+</body>
+</html>
