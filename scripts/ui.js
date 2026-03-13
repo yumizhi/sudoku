@@ -11,16 +11,18 @@ export const elements = {
   numberPad: document.getElementById("numberPad"),
   difficultySelect: document.getElementById("difficultySelect"),
   timerLabel: document.getElementById("timerLabel"),
-  mistakeLabel: document.getElementById("mistakeLabel"),
   modeLabel: document.getElementById("modeLabel"),
   message: document.getElementById("message"),
+  overlayLayer: document.getElementById("overlayLayer"),
+  cellPanel: document.getElementById("cellPanel"),
+  inspectPanel: document.getElementById("inspectPanel"),
+  tutorialPanel: document.getElementById("tutorialPanel"),
+  openCellPanelBtn: document.getElementById("openCellPanelBtn"),
+  openInspectPanelBtn: document.getElementById("openInspectPanelBtn"),
+  openTutorialPanelBtn: document.getElementById("openTutorialPanelBtn"),
   cellBadge: document.getElementById("cellBadge"),
   cellSummary: document.getElementById("cellSummary"),
   candidatePreview: document.getElementById("candidatePreview"),
-  hintBadge: document.getElementById("hintBadge"),
-  hintSummary: document.getElementById("hintSummary"),
-  hintSteps: document.getElementById("hintSteps"),
-  applyHintBtn: document.getElementById("applyHintBtn"),
   globalInspectBadge: document.getElementById("globalInspectBadge"),
   digitInspector: document.getElementById("digitInspector"),
   tutorialDetailTitle: document.getElementById("tutorialDetailTitle"),
@@ -81,7 +83,7 @@ export function renderTutorialLevels(activeTutorialId = null) {
       `<p>${level.summary}</p>` +
       `<div class="tutorial-meta">` +
       `<span class="tag">${level.technique}</span>` +
-      `<button class="btn-secondary" type="button" data-tutorial-id="${level.id}">进入</button>` +
+      `<button class="btn-secondary" type="button" data-tutorial-id="${level.id}">开始</button>` +
       `</div>` +
       `</article>`
     );
@@ -98,16 +100,16 @@ export function syncTutorialPanel(activeTutorialId) {
 export function renderModeLabel(state) {
   if (state.mode === "tutorial") {
     const level = getTutorialById(state.tutorialId);
-    elements.modeLabel.textContent = level ? level.title.replace("教程 ", "T") : "教程";
+    elements.modeLabel.textContent = level ? level.technique : "教程";
     return;
   }
-  elements.modeLabel.textContent = "普通";
+  elements.modeLabel.textContent = "自由对局";
 }
 
 export function renderInspector(state) {
   if (!state.selected) {
     elements.cellBadge.textContent = "未选中";
-    elements.cellSummary.textContent = "选择一个格子后，这里会显示它的位置、状态和候选数字。";
+    elements.cellSummary.textContent = "选中格子后显示位置、状态和候选。";
     elements.candidatePreview.innerHTML = '<div class="candidate-chip muted">-</div>';
     return;
   }
@@ -121,29 +123,29 @@ export function renderInspector(state) {
 
   if (isFixed) {
     elements.cellBadge.textContent = `${label} 给定`;
-    elements.cellSummary.textContent = `这是题目初始数字 ${value}，不可修改。`;
+    elements.cellSummary.textContent = `题目给定 ${value}，不可修改。`;
     elements.candidatePreview.innerHTML = `<div class="candidate-chip muted">${value}</div>`;
     return;
   }
 
   if (!isEmpty) {
     elements.cellBadge.textContent = `${label} 已填`;
-    elements.cellSummary.textContent = `当前是你填入的数字 ${value}。若要调整，请先擦除后再填。`;
+    elements.cellSummary.textContent = `当前填入 ${value}。先擦除再修改。`;
     elements.candidatePreview.innerHTML = `<div class="candidate-chip active">${value}</div>`;
     return;
   }
 
   elements.cellBadge.textContent = `${label} 空格`;
   if (candidates.length === 0) {
-    elements.cellSummary.textContent = "这个格子当前没有合法候选，说明附近已有冲突。";
+    elements.cellSummary.textContent = "当前无合法候选，附近已有冲突。";
     elements.candidatePreview.innerHTML = '<div class="candidate-chip muted">无候选</div>';
     return;
   }
 
   elements.cellSummary.textContent =
     candidates.length === 1
-      ? `当前只剩 1 个候选：${candidates[0]}。这是最直接的裸单。`
-      : `当前有 ${candidates.length} 个候选。点击候选芯片，只预览这个数字与当前格的关系。`;
+      ? `只剩候选 ${candidates[0]}，可直接落子。`
+      : `剩 ${candidates.length} 个候选。点数字可做局部预览。`;
   elements.candidatePreview.innerHTML = candidates
     .map((digit) => {
       const active = state.focusScope === "local" && state.focusDigit === digit ? " active" : "";
@@ -161,49 +163,17 @@ export function renderGlobalInspector(state) {
   }
 }
 
-export function renderHintDetail(state) {
-  if (!state.lastHint) {
-    elements.hintBadge.textContent = "解释优先";
-    elements.hintSummary.textContent = "点击“提示”会先定位一个逻辑步骤，说明为什么成立；只有你点“应用这一步”时才会代填。";
-    elements.hintSteps.innerHTML = [
-      "先观察提示定位到的格子、行列宫或数字高亮。",
-      "读完这一步为什么成立，再决定是否自己填写。",
-      "如果只想继续保持节奏，再点“应用这一步”。"
-    ]
-      .map(
-        (step, index) =>
-          `<div class="tutorial-step"><span class="tutorial-step-index">${index + 1}</span><p>${step}</p></div>`
-      )
-      .join("");
-    elements.applyHintBtn.disabled = true;
-    elements.applyHintBtn.textContent = "应用这一步";
-    return;
-  }
-
-  const hint = state.lastHint;
-  elements.hintBadge.textContent = hint.technique;
-  elements.hintSummary.textContent = hint.summary;
-  elements.hintSteps.innerHTML = hint.steps
-    .map(
-      (step, index) =>
-        `<div class="tutorial-step"><span class="tutorial-step-index">${index + 1}</span><p>${step}</p></div>`
-    )
-    .join("");
-  elements.applyHintBtn.disabled = false;
-  elements.applyHintBtn.textContent = `应用这一步：填入 ${hint.value}`;
-}
-
 export function renderTutorialDetail(state) {
   const defaultSteps = [
-    "先选中一个空格，再看右侧候选芯片，确认它真实剩下哪些数。",
-    "需要观察整盘某个数字时，用“全局观察”，不要把它和输入动作混在一起。",
+    "先选中空格，再看“当前格”里的候选。",
+    "需要扫整盘时，用“全局观察”单独看一个数字。",
     "先做裸单、隐藏单，再考虑锁定候选和 X-Wing。"
   ];
 
   if (state.mode !== "tutorial") {
     elements.tutorialDetailTitle.textContent = "教程解析";
-    elements.tutorialDetailTag.textContent = "普通模式";
-    elements.tutorialDetailSummary.textContent = "普通模式只保留一套稳定观察顺序：当前格候选、整盘某数字、再回到输入。";
+    elements.tutorialDetailTag.textContent = "自由对局";
+    elements.tutorialDetailSummary.textContent = "自由对局保留一套固定观察顺序：当前格、整盘数字、再回到输入。";
     elements.tutorialDetailSteps.innerHTML = defaultSteps
       .map(
         (step, index) =>
@@ -304,6 +274,13 @@ export function renderBoard(state) {
       }
       if (conflicts.has(makeCellKey(row, col))) {
         cell.classList.add("conflict");
+      } else if (
+        state.showValidation &&
+        !state.fixed[row][col] &&
+        value !== 0 &&
+        value !== state.solution[row][col]
+      ) {
+        cell.classList.add("mistake");
       }
       if (hasLocalDigitPreview && selected) {
         if (row === selected.row && col === selected.col) {
@@ -361,10 +338,8 @@ export function renderAll(state) {
   renderPad(state);
   renderModeLabel(state);
   renderInspector(state);
-  renderHintDetail(state);
   renderGlobalInspector(state);
   renderTutorialDetail(state);
   syncTutorialPanel(state.tutorialId);
   elements.timerLabel.textContent = formatTime(state.elapsedSeconds);
-  elements.mistakeLabel.textContent = String(state.mistakes);
 }

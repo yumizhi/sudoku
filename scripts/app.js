@@ -59,7 +59,8 @@ const state = {
   status: "idle",
   generating: false,
   mode: "normal",
-  tutorialId: null
+  tutorialId: null,
+  showValidation: false
 };
 
 function startTimer() {
@@ -102,6 +103,7 @@ function restoreSnapshot(snapshot) {
   state.focusScope = snapshot.focusScope ?? null;
   state.lastHint = null;
   state.status = snapshot.status ?? "playing";
+  state.showValidation = false;
 }
 
 function pushHistory() {
@@ -146,6 +148,23 @@ function redoMove() {
   renderAll(state);
   saveState();
   setMessage("已重做一步。", "info");
+}
+
+function closeOverlayPanels() {
+  elements.overlayLayer.hidden = true;
+  elements.cellPanel.hidden = true;
+  elements.inspectPanel.hidden = true;
+  elements.tutorialPanel.hidden = true;
+  document.body.classList.remove("overlay-open");
+}
+
+function openOverlayPanel(panel) {
+  elements.overlayLayer.hidden = false;
+  elements.cellPanel.hidden = true;
+  elements.inspectPanel.hidden = true;
+  elements.tutorialPanel.hidden = true;
+  panel.hidden = false;
+  document.body.classList.add("overlay-open");
 }
 
 function formatCellLabel(row, col) {
@@ -259,12 +278,12 @@ function checkWin() {
       const level = getTutorialById(state.tutorialId);
       const levelName = level ? level.title : "教程关卡";
       setMessage(
-        `${levelName} 完成！用时 ${formatTime(state.elapsedSeconds)}，累计错误 ${state.mistakes} 次。`,
+        `${levelName} 完成！用时 ${formatTime(state.elapsedSeconds)}。`,
         "success"
       );
     } else {
       setMessage(
-        `完成！用时 ${formatTime(state.elapsedSeconds)}，累计错误 ${state.mistakes} 次。`,
+        `完成！用时 ${formatTime(state.elapsedSeconds)}。`,
         "success"
       );
     }
@@ -280,15 +299,11 @@ function applyDigitInput(digit, options = {}) {
   }
   const { row, col } = state.selected;
   if (state.fixed[row][col]) {
-    if (!fromHint) {
-      setMessage("题目给定数字不能修改。", "warn");
-    }
     return;
   }
 
   if (state.noteMode && !fromHint) {
     if (state.board[row][col] !== 0) {
-      setMessage("该格已有数字，请先擦除后再做笔记。", "warn");
       return;
     }
     pushHistory();
@@ -311,14 +326,10 @@ function applyDigitInput(digit, options = {}) {
   state.focusDigit = null;
   state.focusScope = null;
   state.status = "playing";
+  state.showValidation = false;
 
   if (!fromHint) {
-    if (digit !== state.solution[row][col]) {
-      state.mistakes += 1;
-      setMessage("输入与答案不一致，已保留并标记，建议回查。", "warn");
-    } else {
-      setMessage("已填入数字。", "info");
-    }
+    state.mistakes = 0;
   }
 
   renderAll(state);
@@ -332,7 +343,6 @@ function eraseSelectedCell() {
   }
   const { row, col } = state.selected;
   if (state.fixed[row][col]) {
-    setMessage("题目给定数字不能擦除。", "warn");
     return;
   }
   if (state.board[row][col] === 0 && state.notes[row][col].length === 0) {
@@ -345,16 +355,15 @@ function eraseSelectedCell() {
   state.focusDigit = null;
   state.focusScope = null;
   state.status = "playing";
+  state.showValidation = false;
   renderAll(state);
   saveState();
-  setMessage("已擦除该格。", "info");
 }
 
 function toggleNoteMode(forceValue) {
   state.noteMode = typeof forceValue === "boolean" ? forceValue : !state.noteMode;
   renderAll(state);
   saveState();
-  setMessage(state.noteMode ? "笔记模式已开启。" : "笔记模式已关闭。", "info");
 }
 
 function selectCell(row, col) {
@@ -385,47 +394,10 @@ function giveHint() {
     setMessage("没有可提示的空格。", "info");
     return;
   }
-  state.lastHint = hint;
-  focusHint(hint);
-  renderAll(state);
-  saveState();
-  setMessage(
-    `已定位提示：${hint.technique}。先读右侧“逻辑提示”，需要时再点“应用这一步”。`,
-    "info"
-  );
-}
-
-function applyHintMove() {
-  if (!state.lastHint) {
-    setMessage("先生成一条提示。", "info");
-    return;
-  }
-
-  const hint = state.lastHint;
-  const currentValue = state.board[hint.row][hint.col];
-  if (currentValue === hint.value) {
-    state.lastHint = null;
-    renderAll(state);
-    setMessage("这一步已经完成了。", "info");
-    return;
-  }
-  if (currentValue !== 0 && currentValue !== hint.value) {
-    state.lastHint = null;
-    renderAll(state);
-    setMessage("提示目标格当前已有其他数字，请先处理该格。", "warn");
-    return;
-  }
-
   focusHint(hint);
   applyDigitInput(hint.value, { fromHint: true });
-  state.lastHint = null;
-  renderAll(state);
-  saveState();
   if (state.status !== "won") {
-    setMessage(
-      `已应用提示：${formatCellLabel(hint.row, hint.col)} = ${hint.value}（${hint.technique}）。`,
-      "info"
-    );
+    setMessage(`提示：${formatCellLabel(hint.row, hint.col)} = ${hint.value}。`, "info");
   }
 }
 
@@ -434,14 +406,12 @@ function checkBoard() {
     return;
   }
   const result = evaluateBoard(state.board, state.solution);
+  state.showValidation = true;
   if (result.wrong === 0 && result.conflicts.size === 0) {
     const progress = Math.round(((GRID_SIZE * GRID_SIZE - result.empty) / (GRID_SIZE * GRID_SIZE)) * 100);
-    setMessage(`当前无冲突，完成度 ${progress}%。`, "info");
+    setMessage(`检查完成，当前没有标出的错误。进度 ${progress}%。`, "info");
   } else {
-    setMessage(
-      `检测到 ${result.wrong} 个答案偏差格，${result.conflicts.size} 个冲突格。`,
-      "warn"
-    );
+    setMessage("检查完成，已标出问题。", "info");
   }
   renderAll(state);
 }
@@ -454,13 +424,15 @@ function setActionsDisabled(disabled) {
   const controls = [
     elements.newGameBtn,
     elements.hintBtn,
-    elements.applyHintBtn,
     elements.checkBtn,
     elements.eraseBtn,
     elements.noteBtn,
     elements.undoBtn,
     elements.redoBtn,
-    elements.difficultySelect
+    elements.difficultySelect,
+    elements.openCellPanelBtn,
+    elements.openInspectPanelBtn,
+    elements.openTutorialPanelBtn
   ];
   for (const control of controls) {
     control.disabled = disabled;
@@ -493,6 +465,7 @@ function loadPuzzleState(payload) {
   state.history = [];
   state.future = [];
   state.status = "playing";
+  state.showValidation = false;
 }
 
 async function startTutorialLevel(levelId) {
@@ -504,6 +477,7 @@ async function startTutorialLevel(levelId) {
     setMessage("教程关卡不存在。", "warn");
     return;
   }
+  closeOverlayPanels();
   state.generating = true;
   setActionsDisabled(true);
   setMessage(`正在加载 ${level.title}...`, "info");
@@ -529,7 +503,7 @@ async function startTutorialLevel(levelId) {
     renderAll(state);
     saveState();
     const clueCount = countClues(puzzle);
-    const guideText = Number.isInteger(level.guideDigit) ? `先从“全局观察”里的数字 ${level.guideDigit} 开始。` : "";
+    const guideText = Number.isInteger(level.guideDigit) ? `先用“全局观察”看数字 ${level.guideDigit}。` : "";
     setMessage(
       `${level.title} 已开始（给定 ${clueCount} 个数字）。${guideText}`,
       "info"
@@ -547,6 +521,7 @@ async function startNewGame() {
   if (state.generating) {
     return;
   }
+  closeOverlayPanels();
   state.generating = true;
   setActionsDisabled(true);
   setMessage("正在生成新棋盘...", "info");
@@ -658,6 +633,7 @@ function loadState() {
     state.status = parsed.status;
     state.mode = parsed.mode;
     state.tutorialId = parsed.mode === "tutorial" ? parsed.tutorialId : null;
+    state.showValidation = false;
     if (state.mode === "tutorial" && !state.tutorialId) {
       return false;
     }
@@ -756,7 +732,21 @@ function handleTutorialClick(event) {
   void startTutorialLevel(levelId);
 }
 
+function handleOverlayClick(event) {
+  if (event.target.closest("[data-close-overlay]")) {
+    closeOverlayPanels();
+  }
+}
+
 function handleKeydown(event) {
+  if (event.key === "Escape" && !elements.overlayLayer.hidden) {
+    closeOverlayPanels();
+    event.preventDefault();
+    return;
+  }
+  if (!elements.overlayLayer.hidden) {
+    return;
+  }
   if (state.generating) {
     return;
   }
@@ -816,11 +806,20 @@ function bindEvents() {
   elements.candidatePreview.addEventListener("click", handleCandidatePreviewClick);
   elements.digitInspector.addEventListener("click", handleGlobalInspectClick);
   elements.tutorialList.addEventListener("click", handleTutorialClick);
+  elements.overlayLayer.addEventListener("click", handleOverlayClick);
   elements.newGameBtn.addEventListener("click", () => {
     void startNewGame();
   });
+  elements.openCellPanelBtn.addEventListener("click", () => {
+    openOverlayPanel(elements.cellPanel);
+  });
+  elements.openInspectPanelBtn.addEventListener("click", () => {
+    openOverlayPanel(elements.inspectPanel);
+  });
+  elements.openTutorialPanelBtn.addEventListener("click", () => {
+    openOverlayPanel(elements.tutorialPanel);
+  });
   elements.hintBtn.addEventListener("click", giveHint);
-  elements.applyHintBtn.addEventListener("click", applyHintMove);
   elements.checkBtn.addEventListener("click", checkBoard);
   elements.eraseBtn.addEventListener("click", eraseSelectedCell);
   elements.noteBtn.addEventListener("click", () => {

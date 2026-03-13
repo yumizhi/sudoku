@@ -13,11 +13,11 @@ export const TUTORIAL_LEVELS = [
   {
     id: "t1-naked-single",
     title: "教程 1：裸单",
-    technique: "Naked Single",
+    technique: "裸单",
     objective: "先学会在一个空格里直接收敛到唯一答案。",
     summary: "当一个空格只剩一个候选时，不需要再推理，直接填写。",
     steps: [
-      "先选中 R1C1，再看右侧“当前格”里的候选芯片。",
+      "先选中 R1C1，再看“当前格”里的候选芯片。",
       "把这一行、这一列和这个 3x3 宫里已经出现的数字排除后，这个格子只剩 5 可以填。",
       "填入 5 之后，再沿着它的行列继续扫新的裸单。"
     ],
@@ -28,7 +28,7 @@ export const TUTORIAL_LEVELS = [
   {
     id: "t2-hidden-single",
     title: "教程 2：隐藏单",
-    technique: "Hidden Single",
+    technique: "隐藏单",
     objective: "学会在一整行、一整列或一整个宫里找只有一个位置能放的数字。",
     summary: "隐藏单不是看某一格只剩一个候选，而是看某个数字在一个单元里只剩一个落点。",
     steps: [
@@ -43,7 +43,7 @@ export const TUTORIAL_LEVELS = [
   {
     id: "t3-locked-candidates",
     title: "教程 3：锁定候选",
-    technique: "Locked Candidates",
+    technique: "锁定候选",
     objective: "学会先看一个宫，再看这个宫里的候选是否被锁在同一行或同一列。",
     summary: "如果同一宫里某个数字的候选全都落在同一行或同一列，那么这条线在其他宫里的同数字候选可以删掉。",
     steps: [
