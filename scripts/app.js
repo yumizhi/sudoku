@@ -150,21 +150,110 @@ function redoMove() {
   setMessage("已重做一步。", "info");
 }
 
+const PANEL_DEFAULT_POSITIONS = {
+  cell: { x: 18, y: 88 },
+  inspect: { x: 580, y: 88 },
+  tutorial: { x: 220, y: 186 }
+};
+
+const overlayPanels = [elements.cellPanel, elements.inspectPanel, elements.tutorialPanel];
+let overlayTopZIndex = 54;
+let activeDrag = null;
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function bringPanelToFront(panel) {
+  overlayTopZIndex += 1;
+  panel.style.zIndex = String(overlayTopZIndex);
+}
+
+function getPanelBounds(panel) {
+  const width = panel.offsetWidth;
+  const height = panel.offsetHeight;
+  const maxX = Math.max(0, window.innerWidth - width - 8);
+  const maxY = Math.max(0, window.innerHeight - height - 8);
+  return { maxX, maxY };
+}
+
+function setPanelPosition(panel, x, y) {
+  const { maxX, maxY } = getPanelBounds(panel);
+  const clampedX = clamp(x, 8, maxX);
+  const clampedY = clamp(y, 8, maxY);
+  panel.style.left = `${clampedX}px`;
+  panel.style.top = `${clampedY}px`;
+}
+
+function closeOverlayPanel(panel) {
+  panel.hidden = true;
+}
+
 function closeOverlayPanels() {
-  elements.overlayLayer.hidden = true;
-  elements.cellPanel.hidden = true;
-  elements.inspectPanel.hidden = true;
-  elements.tutorialPanel.hidden = true;
-  document.body.classList.remove("overlay-open");
+  for (const panel of overlayPanels) {
+    closeOverlayPanel(panel);
+  }
 }
 
 function openOverlayPanel(panel) {
-  elements.overlayLayer.hidden = false;
-  elements.cellPanel.hidden = true;
-  elements.inspectPanel.hidden = true;
-  elements.tutorialPanel.hidden = true;
-  panel.hidden = false;
-  document.body.classList.add("overlay-open");
+  if (panel.hidden) {
+    panel.hidden = false;
+    const panelKey = panel.dataset.panel;
+    const defaultPos = PANEL_DEFAULT_POSITIONS[panelKey] ?? { x: 120, y: 120 };
+    setPanelPosition(panel, defaultPos.x, defaultPos.y);
+  }
+  bringPanelToFront(panel);
+}
+
+function toggleOverlayPanel(panel) {
+  if (panel.hidden) {
+    openOverlayPanel(panel);
+  } else {
+    closeOverlayPanel(panel);
+  }
+}
+
+function beginPanelDrag(event, panel) {
+  if (event.button !== 0) {
+    return;
+  }
+  const rect = panel.getBoundingClientRect();
+  bringPanelToFront(panel);
+  activeDrag = {
+    panel,
+    offsetX: event.clientX - rect.left,
+    offsetY: event.clientY - rect.top
+  };
+  panel.classList.add("dragging");
+}
+
+function moveActivePanelDrag(event) {
+  if (!activeDrag) {
+    return;
+  }
+  const nextX = event.clientX - activeDrag.offsetX;
+  const nextY = event.clientY - activeDrag.offsetY;
+  setPanelPosition(activeDrag.panel, nextX, nextY);
+}
+
+function endPanelDrag() {
+  if (!activeDrag) {
+    return;
+  }
+  activeDrag.panel.classList.remove("dragging");
+  activeDrag = null;
+}
+
+function initOverlayPanels() {
+  for (const panel of overlayPanels) {
+    const panelKey = panel.dataset.panel;
+    const defaultPos = PANEL_DEFAULT_POSITIONS[panelKey] ?? { x: 120, y: 120 };
+    panel.style.left = `${defaultPos.x}px`;
+    panel.style.top = `${defaultPos.y}px`;
+    panel.addEventListener("pointerdown", () => {
+      bringPanelToFront(panel);
+    });
+  }
 }
 
 function formatCellLabel(row, col) {
@@ -477,7 +566,6 @@ async function startTutorialLevel(levelId) {
     setMessage("教程关卡不存在。", "warn");
     return;
   }
-  closeOverlayPanels();
   state.generating = true;
   setActionsDisabled(true);
   setMessage(`正在加载 ${level.title}...`, "info");
@@ -521,7 +609,6 @@ async function startNewGame() {
   if (state.generating) {
     return;
   }
-  closeOverlayPanels();
   state.generating = true;
   setActionsDisabled(true);
   setMessage("正在生成新棋盘...", "info");
@@ -733,18 +820,20 @@ function handleTutorialClick(event) {
 }
 
 function handleOverlayClick(event) {
-  if (event.target.closest("[data-close-overlay]")) {
-    closeOverlayPanels();
+  const closeButton = event.target.closest("[data-close-panel]");
+  if (!closeButton) {
+    return;
+  }
+  const panel = event.target.closest(".overlay-panel");
+  if (panel) {
+    closeOverlayPanel(panel);
   }
 }
 
 function handleKeydown(event) {
-  if (event.key === "Escape" && !elements.overlayLayer.hidden) {
+  if (event.key === "Escape") {
     closeOverlayPanels();
     event.preventDefault();
-    return;
-  }
-  if (!elements.overlayLayer.hidden) {
     return;
   }
   if (state.generating) {
@@ -807,17 +896,33 @@ function bindEvents() {
   elements.digitInspector.addEventListener("click", handleGlobalInspectClick);
   elements.tutorialList.addEventListener("click", handleTutorialClick);
   elements.overlayLayer.addEventListener("click", handleOverlayClick);
+  elements.overlayLayer.addEventListener("pointerdown", (event) => {
+    if (event.target.closest("[data-close-panel]")) {
+      return;
+    }
+    const handle = event.target.closest("[data-drag-handle]");
+    if (!handle) {
+      return;
+    }
+    const panel = handle.closest(".overlay-panel");
+    if (!panel) {
+      return;
+    }
+    beginPanelDrag(event, panel);
+  });
+  window.addEventListener("pointermove", moveActivePanelDrag);
+  window.addEventListener("pointerup", endPanelDrag);
   elements.newGameBtn.addEventListener("click", () => {
     void startNewGame();
   });
   elements.openCellPanelBtn.addEventListener("click", () => {
-    openOverlayPanel(elements.cellPanel);
+    toggleOverlayPanel(elements.cellPanel);
   });
   elements.openInspectPanelBtn.addEventListener("click", () => {
-    openOverlayPanel(elements.inspectPanel);
+    toggleOverlayPanel(elements.inspectPanel);
   });
   elements.openTutorialPanelBtn.addEventListener("click", () => {
-    openOverlayPanel(elements.tutorialPanel);
+    toggleOverlayPanel(elements.tutorialPanel);
   });
   elements.hintBtn.addEventListener("click", giveHint);
   elements.checkBtn.addEventListener("click", checkBoard);
@@ -832,12 +937,23 @@ function bindEvents() {
     saveState();
   });
   document.addEventListener("keydown", handleKeydown);
+  window.addEventListener("resize", () => {
+    for (const panel of overlayPanels) {
+      if (panel.hidden) {
+        continue;
+      }
+      const left = Number.parseFloat(panel.style.left || "0");
+      const top = Number.parseFloat(panel.style.top || "0");
+      setPanelPosition(panel, Number.isFinite(left) ? left : 8, Number.isFinite(top) ? top : 8);
+    }
+  });
   window.addEventListener("beforeunload", saveState);
 }
 
 function init() {
   renderTutorialLevels();
   buildBoard();
+  initOverlayPanels();
   bindEvents();
   if (!loadState()) {
     void startNewGame();

@@ -59,8 +59,8 @@ body {
     linear-gradient(180deg, var(--bg-top), var(--bg-mid) 42%, var(--bg-bottom));
 }
 
-body.overlay-open {
-  overflow: hidden;
+[hidden] {
+  display: none !important;
 }
 
 .ambient {
@@ -254,23 +254,12 @@ body.overlay-open {
   position: fixed;
   inset: 0;
   z-index: 50;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-}
-
-.overlay-backdrop {
-  position: absolute;
-  inset: 0;
-  border: none;
-  background: rgba(24, 36, 53, 0.26);
-  backdrop-filter: blur(8px);
-  cursor: pointer;
+  pointer-events: none;
 }
 
 .overlay-panel {
-  position: relative;
-  z-index: 1;
+  position: fixed;
+  pointer-events: auto;
   width: min(520px, calc(100vw - 1rem));
   max-height: min(80vh, 760px);
   overflow: auto;
@@ -297,6 +286,20 @@ body.overlay-open {
   background: var(--surface-secondary);
   box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.74);
 }
+
+.overlay-header {
+  cursor: move;
+  user-select: none;
+}
+
+.overlay-panel.dragging {
+  box-shadow: 0 24px 56px rgba(16, 26, 40, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.74);
+}
+
+.overlay-header .overlay-close {
+  cursor: pointer;
+}
+
 
 .tutorial-overlay-body {
   display: grid;
@@ -794,6 +797,11 @@ button:not(.cell):disabled {
   .overlay-panel,
   .overlay-card {
     padding: 0.85rem;
+  }
+
+  .overlay-panel {
+    max-width: calc(100vw - 0.8rem);
+    max-height: calc(100vh - 1rem);
   }
 
   .controls-surface {
