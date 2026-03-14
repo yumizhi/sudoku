@@ -105,8 +105,29 @@ body.overlay-open {
   min-width: 0;
   padding: 1rem;
   display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  grid-template-areas:
+    "head head"
+    "message message"
+    "board controls";
   gap: 0.8rem;
   align-content: start;
+}
+
+.board-head {
+  grid-area: head;
+}
+
+.message {
+  grid-area: message;
+}
+
+.board-wrap {
+  grid-area: board;
+}
+
+.controls-surface {
+  grid-area: controls;
 }
 
 .board-head {
@@ -172,6 +193,8 @@ body.overlay-open {
 }
 
 .board-wrap {
+  display: grid;
+  align-content: start;
   padding: clamp(0.55rem, 1vw, 0.85rem);
   border-radius: 24px;
   border: 1px solid var(--border-soft);
@@ -189,7 +212,7 @@ body.overlay-open {
 
 .controls-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) 220px;
+  grid-template-columns: 1fr;
   gap: 0.85rem;
   align-items: start;
 }
@@ -216,7 +239,7 @@ body.overlay-open {
 
 .play-actions {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   gap: 0.55rem;
 }
 
@@ -572,7 +595,7 @@ button:not(.cell):disabled {
 .board {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
-  width: min(100%, 620px, max(360px, calc(100vh - 430px)));
+  width: min(100%, clamp(310px, 66vmin, 620px));
   aspect-ratio: 1 / 1;
   border-radius: 22px;
   overflow: hidden;
@@ -724,13 +747,18 @@ button:not(.cell):disabled {
 }
 
 @media (max-width: 1120px) {
+  .board-stage,
   .controls-grid,
   .tutorial-overlay-body {
     grid-template-columns: 1fr;
   }
 
-  .play-actions {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .board-stage {
+    grid-template-areas:
+      "head"
+      "message"
+      "board"
+      "controls";
   }
 
   .board {
@@ -772,12 +800,8 @@ button:not(.cell):disabled {
     padding: 0.8rem;
   }
 
-  .controls-grid {
-    grid-template-columns: 1fr;
-  }
-
   .play-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   }
 }
 
@@ -793,11 +817,6 @@ button:not(.cell):disabled {
 
   .digit-btn {
     min-height: 72px;
-  }
-
-  .play-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.55rem;
   }
 
   .board {
