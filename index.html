@@ -82,14 +82,13 @@
       </section>
     </main>
 
-    <div id="overlayLayer" class="overlay-layer" hidden>
-      <button class="overlay-backdrop" type="button" data-close-overlay aria-label="关闭浮层"></button>
+    <div id="overlayLayer" class="overlay-layer" aria-live="polite">
 
-      <section id="cellPanel" class="overlay-panel glass" hidden aria-label="当前格面板">
-        <div class="overlay-header">
+      <section id="cellPanel" class="overlay-panel glass" data-panel="cell" hidden aria-label="当前格面板">
+        <div class="overlay-header" data-drag-handle>
           <div class="panel-head">
             <h3>当前格</h3>
-            <button class="btn-quiet overlay-close" type="button" data-close-overlay>关闭</button>
+            <button class="btn-quiet overlay-close" type="button" data-close-panel>关闭</button>
           </div>
         </div>
         <div class="overlay-body">
@@ -101,11 +100,11 @@
         </div>
       </section>
 
-      <section id="inspectPanel" class="overlay-panel glass" hidden aria-label="观察面板">
-        <div class="overlay-header">
+      <section id="inspectPanel" class="overlay-panel glass" data-panel="inspect" hidden aria-label="观察面板">
+        <div class="overlay-header" data-drag-handle>
           <div class="panel-head">
             <h3>观察</h3>
-            <button class="btn-quiet overlay-close" type="button" data-close-overlay>关闭</button>
+            <button class="btn-quiet overlay-close" type="button" data-close-panel>关闭</button>
           </div>
         </div>
         <div class="overlay-body">
@@ -127,11 +126,11 @@
         </div>
       </section>
 
-      <section id="tutorialPanel" class="overlay-panel overlay-panel-wide glass" hidden aria-label="教程面板">
-        <div class="overlay-header">
+      <section id="tutorialPanel" class="overlay-panel overlay-panel-wide glass" data-panel="tutorial" hidden aria-label="教程面板">
+        <div class="overlay-header" data-drag-handle>
           <div class="panel-head">
             <h3>教程关卡</h3>
-            <button class="btn-quiet overlay-close" type="button" data-close-overlay>关闭</button>
+            <button class="btn-quiet overlay-close" type="button" data-close-panel>关闭</button>
           </div>
         </div>
         <div class="overlay-body tutorial-overlay-body">
