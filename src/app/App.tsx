@@ -7,6 +7,16 @@ import { DigitPad } from "../features/game/components/DigitPad";
 import { HintModal } from "../features/game/components/HintModal";
 import { TutorialPanel } from "../features/game/components/TutorialPanel";
 import { TutorialPickerModal } from "../features/game/components/TutorialPickerModal";
+import {
+  CheckIcon,
+  EraserIcon,
+  HintIcon,
+  NewGameIcon,
+  NoteIcon,
+  RedoIcon,
+  TutorialIcon,
+  UndoIcon
+} from "../features/game/components/icons";
 import { useSudokuGame } from "../features/game/useSudokuGame";
 
 export default function App(): JSX.Element {
@@ -48,6 +58,12 @@ export default function App(): JSX.Element {
       : state.message.tone === "warn"
         ? "border-ember/20 bg-ember/10 text-ember"
         : "border-slate-200 bg-white/75 text-slate-700";
+  const toolButtonClass =
+    "secondary-action group flex min-h-[4.8rem] flex-col items-center justify-center gap-1.5 px-2 py-3 text-center sm:min-h-0 sm:flex-row sm:justify-start";
+  const topButtonClass =
+    "group flex min-h-[4.4rem] flex-col items-center justify-center gap-1.5 text-center sm:min-h-0 sm:flex-row";
+  const iconClass = "h-5 w-5 text-slate-400 transition group-hover:text-tide";
+  const primaryIconClass = "h-5 w-5 text-white/90";
 
   return (
     <div className="relative min-h-dvh overflow-hidden lg:h-dvh">
@@ -122,36 +138,39 @@ export default function App(): JSX.Element {
               </label>
 
               <button
-                className="primary-action"
+                className={["primary-action", topButtonClass].join(" ")}
                 type="button"
                 disabled={state.generating}
                 onClick={() => startNewGame()}
               >
-                新游戏
+                <NewGameIcon className={primaryIconClass} />
+                <span>新游戏</span>
               </button>
               <button
-                className="secondary-action"
+                className={["secondary-action", topButtonClass].join(" ")}
                 type="button"
                 disabled={state.generating}
                 onClick={() => setTutorialPickerOpen(true)}
               >
-                教程选关
+                <TutorialIcon className={iconClass} />
+                <span>教程选关</span>
               </button>
               {state.mode === "tutorial" ? (
                 <button
-                  className="secondary-action sm:col-span-2"
+                  className={["secondary-action sm:col-span-2", topButtonClass].join(" ")}
                   type="button"
                   disabled={state.generating}
                   onClick={() => setTutorialGuideOpen(true)}
                 >
-                  查看教程说明
+                  <TutorialIcon className={iconClass} />
+                  <span>查看教程说明</span>
                 </button>
               ) : null}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2 lg:grid-cols-2">
               <button
-                className="secondary-action"
+                className={toolButtonClass}
                 type="button"
                 disabled={state.generating}
                 onClick={() =>
@@ -160,47 +179,53 @@ export default function App(): JSX.Element {
                     : dispatch({ type: "requestHint" })
                 }
               >
-                {state.pendingHint ? "应用提示" : "提示"}
+                <HintIcon className={iconClass} />
+                <span>{state.pendingHint ? "应用提示" : "提示"}</span>
               </button>
               <button
-                className="secondary-action"
+                className={toolButtonClass}
                 type="button"
                 disabled={state.generating}
                 onClick={() => dispatch({ type: "checkBoard" })}
               >
-                检查
+                <CheckIcon className={iconClass} />
+                <span>检查</span>
               </button>
               <button
-                className="secondary-action"
+                className={toolButtonClass}
                 type="button"
                 disabled={state.generating}
                 onClick={() => dispatch({ type: "toggleNoteMode" })}
               >
-                {state.noteMode ? "笔记开" : "笔记关"}
+                <NoteIcon className={iconClass} />
+                <span>{state.noteMode ? "笔记开" : "笔记关"}</span>
               </button>
               <button
-                className="secondary-action"
+                className={toolButtonClass}
                 type="button"
                 disabled={state.generating}
                 onClick={() => dispatch({ type: "eraseCell" })}
               >
-                擦除
+                <EraserIcon className={iconClass} />
+                <span>擦除</span>
               </button>
               <button
-                className="secondary-action"
+                className={toolButtonClass}
                 type="button"
                 disabled={state.generating}
                 onClick={() => dispatch({ type: "undo" })}
               >
-                撤销
+                <UndoIcon className={iconClass} />
+                <span>撤销</span>
               </button>
               <button
-                className="secondary-action"
+                className={toolButtonClass}
                 type="button"
                 disabled={state.generating}
                 onClick={() => dispatch({ type: "redo" })}
               >
-                重做
+                <RedoIcon className={iconClass} />
+                <span>重做</span>
               </button>
             </div>
 

@@ -99,10 +99,7 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
               !isFixed &&
               value !== 0 &&
               value !== state.solution[row][col];
-            const isRelated =
-              (hasCellLineFocus || hasLocalDigitPreview) &&
-              selected !== null &&
-              isPeer(selected.row, selected.col, row, col);
+            const isRelated = selected !== null && isPeer(selected.row, selected.col, row, col);
             const isSameValue = hasCellLineFocus && value !== 0 && value === selectedValue;
             const candidateMatch =
               hasGlobalDigitFocus &&
@@ -128,19 +125,20 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
             const classes = [
               "relative grid aspect-square place-items-center border border-slate-300 bg-white text-[clamp(1rem,2.2vw,1.65rem)] font-bold leading-none text-slate-800 transition-colors duration-150 focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/60",
               isFixed ? "bg-stone-100 text-slate-900" : "text-tide",
-              isRelated ? "bg-tide/10" : "",
+              isRelated ? "bg-[#dbe9fb]" : "",
               isBlockedByObservedLine
-                ? "bg-amber-100 ring-1 ring-inset ring-amber-200"
+                ? "bg-[#edf4ff]"
                 : "",
               candidateMatch
-                ? "bg-emerald-100 ring-1 ring-inset ring-emerald-300"
+                ? "bg-[#dbe9fb] ring-1 ring-inset ring-[#8ebcff]"
                 : "",
-              isDigitMatch ? "bg-sky-100 ring-1 ring-inset ring-sky-300 text-slate-900" : "",
-              isSameValue ? "bg-brass/20" : "",
+              isDigitMatch ? "border-[#2489f0] bg-[#2489f0] text-white" : "",
+              isSameValue ? "border-[#2489f0] bg-[#2489f0] text-white" : "",
               isConflict ? "bg-ember/20 text-ember" : "",
               !isConflict && isMistake ? "bg-ember/10 text-ember" : "",
-              isSelected ? "ring-2 ring-inset ring-tide/70" : "",
-              hasLocalDigitPreview && isSelected ? "bg-pine/10" : ""
+              isSelected && value === 0 ? "bg-[#cfe2fb] ring-2 ring-inset ring-[#6f98e9]" : "",
+              isSelected && value !== 0 ? "border-[#6f98e9] bg-[#79a9ff] text-white ring-2 ring-inset ring-[#6f98e9]" : "",
+              hasLocalDigitPreview && isSelected ? "bg-[#cfe2fb]" : ""
             ]
               .filter(Boolean)
               .join(" ");
