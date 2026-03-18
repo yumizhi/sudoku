@@ -17,11 +17,16 @@ export interface MessageState {
   tone: MessageTone;
 }
 
+export type InteractionMode = "none" | "board-selected" | "observe-digit";
+
 export interface HistorySnapshot {
   board: Grid;
   notes: NotesGrid;
   selected: CellPosition | null;
+  selectedCell: CellPosition | null;
+  interactionMode: InteractionMode;
   selectedDigit: Digit | null;
+  observedDigit: Digit | null;
   lastChangedCell: CellPosition | null;
   noteMode: boolean;
   mistakes: number;
@@ -37,7 +42,10 @@ export interface GameState {
   fixed: BoolGrid;
   notes: NotesGrid;
   selected: CellPosition | null;
+  selectedCell: CellPosition | null;
+  interactionMode: InteractionMode;
   selectedDigit: Digit | null;
+  observedDigit: Digit | null;
   lastChangedCell: CellPosition | null;
   pendingHint: HintDetail | null;
   noteMode: boolean;
@@ -61,7 +69,10 @@ export interface GameLoadPayload {
   board?: Grid;
   notes?: NotesGrid;
   selected?: CellPosition | null;
+  selectedCell?: CellPosition | null;
+  interactionMode?: InteractionMode;
   selectedDigit?: Digit | null;
+  observedDigit?: Digit | null;
   lastChangedCell?: CellPosition | null;
   noteMode?: boolean;
   mistakes?: number;

@@ -56,12 +56,20 @@ export function Board({
   onSelectCell
 }: BoardProps): JSX.Element {
   const selected = state.selected;
+  const highlightedCell =
+    state.interactionMode === "observe-digit"
+      ? null
+      : state.interactionMode === "board-selected"
+        ? state.selectedCell
+        : state.selected;
+  const highlightedDigit =
+    state.interactionMode === "observe-digit" ? state.observedDigit : state.selectedDigit;
   const highlightState = computeHighlights({
     board: state.board,
     fixed: state.fixed,
     notes: state.notes,
-    selectedCell: state.selected,
-    selectedDigit: state.selectedDigit,
+    selectedCell: highlightedCell,
+    selectedDigit: highlightedDigit,
     lastChangedCell: state.lastChangedCell
   });
 

@@ -12,7 +12,13 @@ import {
   toggleNote
 } from "../../domain/sudoku";
 import type { CellPosition, Difficulty, Digit } from "../../domain/sudoku";
-import type { GameLoadPayload, GameState, HistorySnapshot, MessageState } from "./types";
+import type {
+  GameLoadPayload,
+  GameState,
+  HistorySnapshot,
+  InteractionMode,
+  MessageState
+} from "./types";
 
 type GameAction =
   | { type: "setDifficulty"; difficulty: Difficulty }
@@ -21,10 +27,13 @@ type GameAction =
   | { type: "replaceState"; state: GameState }
   | { type: "tick" }
   | { type: "selectCell"; row: number; col: number }
+  | { type: "interactWithBoardCell"; row: number; col: number }
   | { type: "moveSelection"; deltaRow: number; deltaCol: number }
   | { type: "toggleNoteMode"; forceValue?: boolean }
   | { type: "toggleSelectedDigit"; digit: Digit }
+  | { type: "toggleObserveDigit"; digit: Digit }
   | { type: "clearSelectedDigit" }
+  | { type: "clearInteraction" }
   | { type: "inputDigit"; digit: Digit; fromHint?: boolean }
   | { type: "eraseCell" }
   | { type: "requestHint" }
@@ -67,7 +76,10 @@ function makeSnapshot(state: GameState): HistorySnapshot {
     board: cloneGrid(state.board),
     notes: cloneNotes(state.notes),
     selected: state.selected ? { ...state.selected } : null,
+    selectedCell: state.selectedCell ? { ...state.selectedCell } : null,
+    interactionMode: state.interactionMode,
     selectedDigit: state.selectedDigit,
+    observedDigit: state.observedDigit,
     lastChangedCell: state.lastChangedCell ? { ...state.lastChangedCell } : null,
     noteMode: state.noteMode,
     mistakes: state.mistakes,
@@ -81,7 +93,10 @@ function restoreSnapshot(state: GameState, snapshot: HistorySnapshot): GameState
     board: cloneGrid(snapshot.board),
     notes: cloneNotes(snapshot.notes),
     selected: snapshot.selected ? { ...snapshot.selected } : null,
+    selectedCell: snapshot.selectedCell ? { ...snapshot.selectedCell } : null,
+    interactionMode: snapshot.interactionMode,
     selectedDigit: snapshot.selectedDigit,
+    observedDigit: snapshot.observedDigit,
     lastChangedCell: snapshot.lastChangedCell ? { ...snapshot.lastChangedCell } : null,
     noteMode: snapshot.noteMode,
     mistakes: snapshot.mistakes,
@@ -116,22 +131,104 @@ function finalizeBoardState(nextState: GameState): GameState {
   return nextState;
 }
 
-function selectCellState(state: GameState, row: number, col: number): GameState {
-  const sameCell = state.selected?.row === row && state.selected?.col === col;
-  const value = state.board[row][col];
+function clearInteractionState(
+  state: GameState,
+  options: {
+    selected?: CellPosition | null;
+    selectedDigit?: Digit | null;
+  } = {}
+): GameState {
+  return {
+    ...state,
+    selected: "selected" in options ? options.selected ?? null : state.selected,
+    selectedCell: null,
+    interactionMode: "none",
+    selectedDigit: "selectedDigit" in options ? options.selectedDigit ?? null : state.selectedDigit,
+    observedDigit: null
+  };
+}
 
-  if (sameCell) {
+function setBoardSelectedState(state: GameState, row: number, col: number): GameState {
+  return {
+    ...state,
+    selected: { row, col },
+    selectedCell: { row, col },
+    interactionMode: "board-selected",
+    selectedDigit: null,
+    observedDigit: null
+  };
+}
+
+function updateCursorSelection(
+  state: GameState,
+  row: number,
+  col: number,
+  interactionMode: InteractionMode = state.interactionMode
+): GameState {
+  if (interactionMode === "observe-digit") {
     return {
       ...state,
-      selected: null,
-      selectedDigit: value !== 0 ? null : state.selectedDigit
+      selected: { row, col },
+      selectedCell: null
     };
+  }
+
+  const value = state.board[row][col];
+  if (value !== 0) {
+    return setBoardSelectedState(state, row, col);
+  }
+
+  return clearInteractionState(state, {
+    selected: { row, col },
+    selectedDigit: state.interactionMode === "observe-digit" ? null : state.selectedDigit
+  });
+}
+
+function selectCellState(state: GameState, row: number, col: number): GameState {
+  const value = state.board[row][col];
+
+  if (value !== 0) {
+    const sameBoardSelected =
+      state.interactionMode === "board-selected" &&
+      state.selectedCell?.row === row &&
+      state.selectedCell?.col === col;
+
+    if (sameBoardSelected) {
+      return clearInteractionState(state, {
+        selected: null,
+        selectedDigit: null
+      });
+    }
+
+    return setBoardSelectedState(state, row, col);
+  }
+
+  if (state.interactionMode === "observe-digit") {
+    return {
+      ...state,
+      selected: { row, col }
+    };
+  }
+
+  return clearInteractionState(state, {
+    selected: { row, col },
+    selectedDigit: state.selectedDigit
+  });
+}
+
+function toggleObserveDigitState(state: GameState, digit: Digit): GameState {
+  if (state.interactionMode === "observe-digit" && state.observedDigit === digit) {
+    return clearInteractionState(state, {
+      selectedDigit: null
+    });
   }
 
   return {
     ...state,
-    selected: { row, col },
-    selectedDigit: value !== 0 ? null : state.selectedDigit
+    selectedCell: null,
+    interactionMode: "observe-digit",
+    selectedDigit: null,
+    observedDigit: digit
   };
 }
 
@@ -139,10 +236,9 @@ function applyDigitPlacement(state: GameState, digit: Digit, fromHint: boolean):
   if (!state.selected) {
     return fromHint
       ? state
-      : {
-          ...state,
+      : clearInteractionState(state, {
           selectedDigit: digit
-        };
+        });
   }
 
   const { row, col } = state.selected;
@@ -169,7 +265,11 @@ function applyDigitPlacement(state: GameState, digit: Digit, fromHint: boolean):
     return {
       ...withHistory,
       notes,
+      selected: { row, col },
+      selectedCell: null,
+      interactionMode: "none",
       selectedDigit: digit,
+      observedDigit: null,
       lastChangedCell: { row, col },
       pendingHint: null,
       message: createMessage(`已切换 ${digit} 的笔记。`)
@@ -178,8 +278,7 @@ function applyDigitPlacement(state: GameState, digit: Digit, fromHint: boolean):
 
   if (state.board[row][col] === digit && !fromHint) {
     return {
-      ...state,
-      selectedDigit: digit,
+      ...setBoardSelectedState(state, row, col),
       message: createMessage(`当前格已经是 ${digit}。`)
     };
   }
@@ -195,7 +294,11 @@ function applyDigitPlacement(state: GameState, digit: Digit, fromHint: boolean):
     ...withHistory,
     board,
     notes,
-    selectedDigit: digit,
+    selected: { row, col },
+    selectedCell: { row, col },
+    interactionMode: "board-selected",
+    selectedDigit: null,
+    observedDigit: null,
     lastChangedCell: { row, col },
     pendingHint: null,
     showValidation: false,
@@ -233,6 +336,11 @@ function eraseSelectedCell(state: GameState): GameState {
     ...withHistory,
     board,
     notes,
+    selected: { row, col },
+    selectedCell: null,
+    interactionMode: "none",
+    selectedDigit: null,
+    observedDigit: null,
     lastChangedCell: { row, col },
     pendingHint: null,
     showValidation: false,
@@ -263,7 +371,10 @@ export function createInitialGameState(): GameState {
     fixed: makeBoolGrid(false),
     notes: makeNoteGrid(),
     selected: null,
+    selectedCell: null,
+    interactionMode: "none",
     selectedDigit: null,
+    observedDigit: null,
     lastChangedCell: null,
     pendingHint: null,
     noteMode: false,
@@ -283,7 +394,10 @@ export function createInitialGameState(): GameState {
 export function createGameStateFromPayload(payload: GameLoadPayload): GameState {
   const board = payload.board ? cloneGrid(payload.board) : cloneGrid(payload.puzzle);
   const notes = payload.notes ? cloneNotes(payload.notes) : makeNoteGrid();
-  const selected = payload.selected ?? findDefaultSelectedCell(payload.puzzle, board);
+  const interactionMode = payload.interactionMode ?? "none";
+  const fallbackSelected = payload.selectedCell ?? payload.selected ?? findDefaultSelectedCell(payload.puzzle, board);
+  const selected = interactionMode === "board-selected" ? fallbackSelected : (payload.selected ?? fallbackSelected);
+  const selectedCell = interactionMode === "board-selected" ? payload.selectedCell ?? selected : null;
 
   return {
     difficulty: payload.difficulty,
@@ -294,7 +408,10 @@ export function createGameStateFromPayload(payload: GameLoadPayload): GameState 
     fixed: deriveFixedGrid(payload.puzzle),
     notes,
     selected: selected ? { ...selected } : null,
-    selectedDigit: payload.selectedDigit ?? null,
+    selectedCell: selectedCell ? { ...selectedCell } : null,
+    interactionMode,
+    selectedDigit: interactionMode === "none" ? payload.selectedDigit ?? null : null,
+    observedDigit: interactionMode === "observe-digit" ? payload.observedDigit ?? null : null,
     lastChangedCell: payload.lastChangedCell ?? null,
     pendingHint: null,
     noteMode: payload.noteMode ?? false,
@@ -344,16 +461,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "selectCell":
       return selectCellState(state, action.row, action.col);
 
+    case "interactWithBoardCell":
+      return selectCellState(state, action.row, action.col);
+
     case "moveSelection": {
-      const current = state.selected ?? { row: 0, col: 0 };
+      const current = state.selected ?? state.selectedCell ?? { row: 0, col: 0 };
       const row = (current.row + action.deltaRow + 9) % 9;
       const col = (current.col + action.deltaCol + 9) % 9;
-      const value = state.board[row][col];
-      return {
-        ...state,
-        selected: { row, col },
-        selectedDigit: value !== 0 ? null : state.selectedDigit
-      };
+      return updateCursorSelection(state, row, col);
     }
 
     case "toggleNoteMode":
@@ -364,16 +479,23 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       };
 
     case "toggleSelectedDigit":
-      return {
-        ...state,
+      return clearInteractionState(state, {
         selectedDigit: state.selectedDigit === action.digit ? null : action.digit
-      };
+      });
+
+    case "toggleObserveDigit":
+      return toggleObserveDigitState(state, action.digit);
 
     case "clearSelectedDigit":
-      return {
-        ...state,
+      return clearInteractionState(state, {
         selectedDigit: null
-      };
+      });
+
+    case "clearInteraction":
+      return clearInteractionState(state, {
+        selected: state.interactionMode === "board-selected" ? null : state.selected,
+        selectedDigit: null
+      });
 
     case "inputDigit":
       return applyDigitPlacement(state, action.digit, action.fromHint === true);
@@ -401,7 +523,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         pendingHint: hint,
         selected: { row: hint.row, col: hint.col },
+        selectedCell: null,
+        interactionMode: "none",
         selectedDigit: hint.value,
+        observedDigit: null,
         noteMode: false,
         message: createMessage(`${hint.technique} 已准备好。先看解释，再决定是否应用。`)
       };
