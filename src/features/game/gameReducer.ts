@@ -206,18 +206,24 @@ function applyDigitPlacement(state: GameState, digit: Digit, fromHint: boolean):
   notes[row][col] = [];
   clearPeerNotes(notes, row, col, digit);
 
-  const updated = finalizeBoardState({
-    ...withHistory,
-    board,
-    notes,
-    pendingHint: null,
-    showValidation: false,
-    status: "playing",
-    mistakes: withHistory.mistakes,
-    message: fromHint
-      ? createMessage(`已应用提示：R${row + 1}C${col + 1} = ${digit}。`)
-      : createMessage(`已填入 ${digit}。`)
-  });
+  const updated = finalizeBoardState(
+    applyBoardSelectionState(
+      {
+        ...withHistory,
+        board,
+        notes,
+        pendingHint: null,
+        showValidation: false,
+        status: "playing",
+        mistakes: withHistory.mistakes,
+        message: fromHint
+          ? createMessage(`已应用提示：R${row + 1}C${col + 1} = ${digit}。`)
+          : createMessage(`已填入 ${digit}。`)
+      },
+      row,
+      col
+    )
+  );
 
   return updated;
 }

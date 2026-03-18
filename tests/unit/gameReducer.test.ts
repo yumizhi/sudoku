@@ -69,6 +69,15 @@ describe("gameReducer", () => {
     expect(state.observedDigit).toBeNull();
   });
 
+  it("keeps empty-cell selection visible without entering digit highlight mode", () => {
+    const state = gameReducer(makeState(), { type: "interactWithBoardCell", row: 0, col: 0 });
+
+    expect(state.selected).toEqual({ row: 0, col: 0 });
+    expect(state.interactionMode).toBe("none");
+    expect(state.selectedCell).toBeNull();
+    expect(state.observedDigit).toBeNull();
+  });
+
   it("observe digit replaces board-selected and toggles off on repeated click", () => {
     let state = makeState();
     state = gameReducer(state, { type: "interactWithBoardCell", row: 0, col: 2 });
@@ -91,6 +100,14 @@ describe("gameReducer", () => {
 
     expect(state.interactionMode).toBe("board-selected");
     expect(state.selectedCell).toEqual({ row: 0, col: 2 });
+    expect(state.observedDigit).toBeNull();
+  });
+
+  it("promotes a successful digit input into board-selected same-digit highlight", () => {
+    const state = gameReducer(makeState(), { type: "inputDigit", digit: 1 });
+
+    expect(state.interactionMode).toBe("board-selected");
+    expect(state.selectedCell).toEqual({ row: 0, col: 0 });
     expect(state.observedDigit).toBeNull();
   });
 });

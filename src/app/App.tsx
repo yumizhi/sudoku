@@ -241,20 +241,8 @@ export default function App(): JSX.Element {
             </div>
 
             <div className="shrink-0 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white/80 p-3">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-slate-500">
-                    数字
-                  </p>
-                  <h2 className="mt-1 text-lg font-bold text-slate-900">
-                    {digitPadMode === "observe"
-                      ? "观察模式"
-                      : state.noteMode
-                        ? "笔记输入"
-                        : "直接填入"}
-                  </h2>
-                </div>
-                {state.mode === "tutorial" && tutorial ? (
+              {state.mode === "tutorial" && tutorial ? (
+                <div className="mb-3 flex justify-end">
                   <button
                     type="button"
                     className="soft-chip"
@@ -262,8 +250,8 @@ export default function App(): JSX.Element {
                   >
                     {tutorial.title}
                   </button>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
 
               <DigitPad
                 activeDigit={activeObservedDigit}

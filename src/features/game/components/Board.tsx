@@ -1,11 +1,5 @@
 import { useEffect } from "react";
-import {
-  boxStart,
-  calculateConflicts,
-  getCandidates,
-  isPeer,
-  makeCellKey
-} from "../../../domain/sudoku";
+import { calculateConflicts, makeCellKey } from "../../../domain/sudoku";
 import type { Digit } from "../../../domain/sudoku";
 import type { GameState } from "../types";
 
@@ -50,27 +44,9 @@ export function Board({
   const selected = state.selected;
   const boardSelectedCell = state.interactionMode === "board-selected" ? state.selectedCell : null;
   const boardSelectedDigit =
-    boardSelectedCell !== null
-      ? state.board[boardSelectedCell.row][boardSelectedCell.col]
-      : 0;
+    boardSelectedCell !== null ? state.board[boardSelectedCell.row][boardSelectedCell.col] : null;
   const observedDigit = state.interactionMode === "observe-digit" ? state.observedDigit : null;
-  const hasBoardSelected = boardSelectedCell !== null && boardSelectedDigit !== 0;
-  const hasObservedDigit = observedDigit !== null;
-  const occupiedRows = new Set<number>();
-  const occupiedCols = new Set<number>();
-  const occupiedBoxes = new Set<string>();
-
-  if (hasObservedDigit && observedDigit !== null) {
-    for (let row = 0; row < 9; row += 1) {
-      for (let col = 0; col < 9; col += 1) {
-        if (state.board[row][col] === observedDigit) {
-          occupiedRows.add(row);
-          occupiedCols.add(col);
-          occupiedBoxes.add(`${boxStart(row)}-${boxStart(col)}`);
-        }
-      }
-    }
-  }
+  const interactionDigit = observedDigit ?? boardSelectedDigit;
 
   useEffect(() => {
     if (!selected) {
@@ -100,63 +76,30 @@ export function Board({
               !isFixed &&
               value !== 0 &&
               value !== state.solution[row][col];
-            const isBoardSelectedSource =
-              boardSelectedCell?.row === row && boardSelectedCell?.col === col;
-            const isRelated =
-              hasBoardSelected &&
-              boardSelectedCell !== null &&
-              isPeer(boardSelectedCell.row, boardSelectedCell.col, row, col);
-            const isSameValue = hasBoardSelected && value !== 0 && value === boardSelectedDigit;
-            const candidateMatch =
-              hasObservedDigit &&
-              value === 0 &&
-              observedDigit !== null &&
-              getCandidates(state.board, row, col).includes(observedDigit);
-            const isBlockedByObservedLine =
-              hasObservedDigit &&
-              value === 0 &&
-              !candidateMatch &&
-              (occupiedRows.has(row) ||
-                occupiedCols.has(col) ||
-                occupiedBoxes.has(`${boxStart(row)}-${boxStart(col)}`));
-            const isObservedDigitMatch =
-              hasObservedDigit && observedDigit !== null && value !== 0 && value === observedDigit;
+            const isBoardSelectedSource = boardSelectedCell?.row === row && boardSelectedCell?.col === col;
+            const isSameValue = interactionDigit !== null && value !== 0 && value === interactionDigit;
 
             let toneClass = isFixed ? "bg-stone-100 text-slate-900" : "bg-white text-tide";
             let borderClass = "border-slate-300";
             let ringClass = "";
 
-            if (state.interactionMode === "board-selected") {
-              if (isRelated) {
-                toneClass = "bg-[#dbe9fb] text-slate-900";
-              }
+            if (isSameValue) {
+              toneClass = "bg-[#2489f0] text-white";
+              borderClass = "border-[#2489f0]";
+            }
 
-              if (isSameValue) {
-                toneClass = "bg-[#2489f0] text-white";
-                borderClass = "border-[#2489f0]";
-              }
+            if (isSelected && value === 0) {
+              toneClass = "bg-[#eef5ff] text-slate-900";
+              borderClass = "border-[#7ea6ec]";
+              ringClass = "ring-2 ring-inset ring-[#7ea6ec]";
+            }
 
-              if (isBoardSelectedSource) {
+            if (isSelected && value !== 0) {
+              if (isBoardSelectedSource || state.interactionMode !== "observe-digit") {
                 toneClass = "bg-[#79a9ff] text-white";
                 borderClass = "border-[#6f98e9]";
-                ringClass = "ring-2 ring-inset ring-[#6f98e9]";
               }
-            } else if (state.interactionMode === "observe-digit") {
-              if (isBlockedByObservedLine) {
-                toneClass = "bg-[#edf4ff] text-slate-700";
-              }
-
-              if (candidateMatch) {
-                toneClass = "bg-[#dbe9fb] text-slate-900";
-                borderClass = "border-[#8ebcff]";
-                ringClass = "ring-1 ring-inset ring-[#8ebcff]";
-              }
-
-              if (isObservedDigitMatch) {
-                toneClass = "bg-[#2489f0] text-white";
-                borderClass = "border-[#2489f0]";
-                ringClass = "";
-              }
+              ringClass = "ring-2 ring-inset ring-[#6f98e9]";
             }
 
             if (isConflict) {
