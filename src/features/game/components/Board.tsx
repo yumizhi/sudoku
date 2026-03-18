@@ -122,26 +122,62 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
                 isPeer(selected.row, selected.col, row, col)) ||
               (hasGlobalDigitFocus && value !== 0 && value === state.focusDigit);
 
+            let toneClass = isFixed ? "bg-stone-100 text-slate-900" : "bg-white text-tide";
+            let borderClass = "border-slate-300";
+            let ringClass = "";
+
+            if (isBlockedByObservedLine) {
+              toneClass = "bg-[#edf4ff] text-slate-700";
+            }
+
+            if (isRelated) {
+              toneClass = "bg-[#dbe9fb] text-slate-900";
+            }
+
+            if (candidateMatch) {
+              toneClass = "bg-[#dbe9fb] text-slate-900";
+              borderClass = "border-[#8ebcff]";
+              ringClass = "ring-1 ring-inset ring-[#8ebcff]";
+            }
+
+            if (isDigitMatch || isSameValue) {
+              toneClass = "bg-[#2489f0] text-white";
+              borderClass = "border-[#2489f0]";
+              ringClass = "";
+            }
+
+            if (isSelected && value === 0) {
+              toneClass = "bg-[#cfe2fb] text-slate-900";
+              borderClass = "border-[#6f98e9]";
+              ringClass = "ring-2 ring-inset ring-[#6f98e9]";
+            }
+
+            if (isSelected && value !== 0) {
+              toneClass = "bg-[#79a9ff] text-white";
+              borderClass = "border-[#6f98e9]";
+              ringClass = "ring-2 ring-inset ring-[#6f98e9]";
+            }
+
+            if (hasLocalDigitPreview && isSelected) {
+              toneClass = "bg-[#cfe2fb] text-slate-900";
+            }
+
+            if (isConflict) {
+              toneClass = "bg-ember/20 text-ember";
+              borderClass = "border-slate-300";
+              ringClass = "";
+            } else if (isMistake) {
+              toneClass = "bg-ember/10 text-ember";
+              borderClass = "border-slate-300";
+              ringClass = "";
+            }
+
             const classes = [
-              "relative grid aspect-square place-items-center border border-slate-300 bg-white text-[clamp(1rem,2.2vw,1.65rem)] font-bold leading-none text-slate-800 transition-colors duration-150 focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/60",
-              isFixed ? "bg-stone-100 text-slate-900" : "text-tide",
-              isRelated ? "bg-[#dbe9fb]" : "",
-              isBlockedByObservedLine
-                ? "bg-[#edf4ff]"
-                : "",
-              candidateMatch
-                ? "bg-[#dbe9fb] ring-1 ring-inset ring-[#8ebcff]"
-                : "",
-              isDigitMatch ? "border-[#2489f0] bg-[#2489f0] text-white" : "",
-              isSameValue ? "border-[#2489f0] bg-[#2489f0] text-white" : "",
-              isConflict ? "bg-ember/20 text-ember" : "",
-              !isConflict && isMistake ? "bg-ember/10 text-ember" : "",
-              isSelected && value === 0 ? "bg-[#cfe2fb] ring-2 ring-inset ring-[#6f98e9]" : "",
-              isSelected && value !== 0 ? "border-[#6f98e9] bg-[#79a9ff] text-white ring-2 ring-inset ring-[#6f98e9]" : "",
-              hasLocalDigitPreview && isSelected ? "bg-[#cfe2fb]" : ""
-            ]
-              .filter(Boolean)
-              .join(" ");
+              "relative grid aspect-square place-items-center border text-[clamp(1rem,2.2vw,1.65rem)] font-bold leading-none transition-colors duration-150 focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/60",
+              toneClass,
+              borderClass,
+              ringClass
+            ].join(" ");
 
             return (
               <button
