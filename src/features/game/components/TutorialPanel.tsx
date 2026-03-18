@@ -54,7 +54,7 @@ export function TutorialPanel({ state, onStartTutorial }: TutorialPanelProps): J
               className={[
                 "rounded-[1.45rem] border p-4 transition",
                 active
-                  ? "border-tide/30 bg-tide/7 shadow-sm"
+                  ? "border-tide/30 bg-tide/10 shadow-sm"
                   : "border-slate-200 bg-white/70 hover:border-tide/20 hover:bg-white/90"
               ].join(" ")}
             >
@@ -67,7 +67,7 @@ export function TutorialPanel({ state, onStartTutorial }: TutorialPanelProps): J
               </div>
               <button
                 type="button"
-                className="mt-4 inline-flex rounded-full border border-tide/20 bg-white px-4 py-2 text-sm font-bold text-tide transition hover:-translate-y-0.5 hover:border-tide/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+                className="mt-4 inline-flex rounded-full border border-tide/20 bg-white px-4 py-2 text-sm font-bold text-tide transition hover:-translate-y-0.5 hover:border-tide/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
                 disabled={state.generating}
                 onClick={() => onStartTutorial(item.id)}
               >

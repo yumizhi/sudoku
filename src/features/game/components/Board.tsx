@@ -105,14 +105,14 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
             const classes = [
               "relative grid aspect-square place-items-center border border-slate-300 bg-white text-[clamp(1rem,2.2vw,1.65rem)] font-bold leading-none text-slate-800 transition-colors duration-150 focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/60",
               isFixed ? "bg-stone-100 text-slate-900" : "text-tide",
-              isRelated ? "bg-tide/7" : "",
-              isSelected ? "bg-tide/15 ring-2 ring-inset ring-tide/60" : "",
+              isRelated ? "bg-tide/10" : "",
+              isSelected ? "bg-tide/20 ring-2 ring-inset ring-tide/60" : "",
               isSameValue ? "bg-brass/20" : "",
-              isConflict ? "bg-ember/15 text-ember" : "",
-              !isConflict && isMistake ? "bg-ember/12 text-ember" : "",
-              isDigitMatch ? "bg-tide/18" : "",
-              candidateMatch ? "bg-pine/12" : "",
-              hasLocalDigitPreview && isSelected ? "bg-pine/14" : ""
+              isConflict ? "bg-ember/20 text-ember" : "",
+              !isConflict && isMistake ? "bg-ember/10 text-ember" : "",
+              isDigitMatch ? "bg-tide/20" : "",
+              candidateMatch ? "bg-pine/10" : "",
+              hasLocalDigitPreview && isSelected ? "bg-pine/10" : ""
             ]
               .filter(Boolean)
               .join(" ");

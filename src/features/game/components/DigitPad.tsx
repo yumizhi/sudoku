@@ -29,7 +29,7 @@ export function DigitPad({ state, onDigitClick }: DigitPadProps): JSX.Element {
               "group rounded-[1.35rem] border px-3 py-4 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 sm:px-4 sm:py-5",
               complete
                 ? "border-pine/30 bg-pine/10 text-pine"
-                : "border-slate-200 bg-white/85 text-slate-900 hover:border-tide/25 hover:bg-tide/5"
+                : "border-slate-200 bg-white/80 text-slate-900 hover:border-tide/25 hover:bg-tide/5"
             ].join(" ")}
             disabled={state.generating}
             onClick={() => onDigitClick(digit)}

@@ -31,7 +31,7 @@
 
 @layer components {
   .panel-surface {
-    @apply rounded-[2rem] border border-white/60 bg-white/72 shadow-panel backdrop-blur-xl;
+    @apply rounded-[2rem] border border-white/60 bg-white/70 shadow-panel backdrop-blur-xl;
   }
 
   .metric-card {
@@ -47,7 +47,7 @@
   }
 
   .soft-chip {
-    @apply inline-flex items-center justify-center rounded-full border border-tide/15 bg-tide/8 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-tide;
+    @apply inline-flex items-center justify-center rounded-full border border-tide/20 bg-tide/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-tide;
   }
 
   .primary-action {
@@ -55,7 +55,7 @@
   }
 
   .secondary-action {
-    @apply rounded-2xl border border-slate-200 bg-white/88 px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-tide/20 hover:bg-tide/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:border-slate-200 disabled:hover:bg-white/88;
+    @apply rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-tide/20 hover:bg-tide/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:border-slate-200 disabled:hover:bg-white/90;
   }
 }
 
