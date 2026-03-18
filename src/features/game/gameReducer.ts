@@ -494,13 +494,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 export function describeSelectedCell(state: GameState): {
   title: string;
   summary: string;
-  candidates: Digit[];
 } {
   if (!state.selected) {
     return {
       title: "未选中",
-      summary: "选中一个格子后，这里会显示位置和候选。",
-      candidates: []
+      summary: "选中一个格子。"
     };
   }
 
@@ -512,32 +510,20 @@ export function describeSelectedCell(state: GameState): {
   if (fixed) {
     return {
       title: `${label} 给定`,
-      summary: `题目给定 ${value}，这个位置不可修改。`,
-      candidates: []
+      summary: `题目给定 ${value}。`
     };
   }
 
   if (value !== 0) {
     return {
       title: `${label} 已填`,
-      summary: `当前填入 ${value}。如需修改，请先擦除。`,
-      candidates: []
-    };
-  }
-
-  const candidates = getCandidates(state.board, row, col);
-  if (candidates.length === 0) {
-    return {
-      title: `${label} 无候选`,
-      summary: "当前没有合法候选，附近已经出现冲突。",
-      candidates
+      summary: `当前填入 ${value}。如需修改，请先擦除。`
     };
   }
 
   return {
     title: `${label} 空格`,
-    summary:
-      candidates.length === 1
+    summary: "空格。"
         ? `只剩候选 ${candidates[0]}。`
         : `当前还有 ${candidates.length} 个候选。`,
     candidates

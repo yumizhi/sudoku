@@ -26,12 +26,12 @@ export function DigitPad({
   }
 
   return (
-    <div className="grid gap-4">
-      <div className="grid grid-cols-2 gap-2 rounded-[1.35rem] border border-slate-200 bg-slate-50 p-1.5">
+    <div className="grid h-full gap-3">
+      <div className="grid grid-cols-2 gap-2 rounded-[1.2rem] border border-slate-200 bg-slate-50 p-1.5">
         <button
           type="button"
           className={[
-            "rounded-[1rem] px-3 py-2 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50",
+            "rounded-[0.95rem] px-3 py-2 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50",
             mode === "input" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
           ].join(" ")}
           onClick={() => onModeChange("input")}
@@ -41,7 +41,7 @@ export function DigitPad({
         <button
           type="button"
           className={[
-            "rounded-[1rem] px-3 py-2 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50",
+            "rounded-[0.95rem] px-3 py-2 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50",
             mode === "observe" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
           ].join(" ")}
           onClick={() => onModeChange("observe")}
@@ -50,7 +50,7 @@ export function DigitPad({
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
         {Array.from({ length: 9 }, (_, index) => {
           const digit = (index + 1) as Digit;
           const complete = counts[digit] === 9;
@@ -60,7 +60,7 @@ export function DigitPad({
               key={digit}
               type="button"
               className={[
-                "group rounded-[1.35rem] border px-3 py-4 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 sm:px-4 sm:py-5",
+                "group rounded-[1rem] border px-2 py-2.5 text-center shadow-sm transition duration-150 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 sm:px-2.5 sm:py-3",
                 active
                   ? "border-tide/40 bg-tide/10 text-tide"
                   : complete
@@ -70,8 +70,8 @@ export function DigitPad({
               disabled={state.generating}
               onClick={() => onDigitClick(digit)}
             >
-              <div className="text-[1.55rem] font-black leading-none sm:text-[1.75rem]">{digit}</div>
-              <div className="mt-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <div className="text-[1.2rem] font-black leading-none sm:text-[1.4rem]">{digit}</div>
+              <div className="mt-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-slate-500">
                 {counts[digit]}/9
               </div>
             </button>
