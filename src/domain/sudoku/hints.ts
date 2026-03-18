@@ -39,8 +39,7 @@ function buildHintDetail(rawHint: RawHint): HintDetail {
         `先看 ${cellLabel} 的候选，它现在只剩 ${rawHint.value}。`,
         "同一行、同一列和同一个 3x3 宫已经把其他数字全部排除了。",
         `当一个空格只剩唯一候选时，这一步就是裸单，所以 ${cellLabel} = ${rawHint.value}。`
-      ],
-      highlightMode: "board-selected"
+      ]
     };
   }
 
@@ -56,8 +55,7 @@ function buildHintDetail(rawHint: RawHint): HintDetail {
         `先只观察数字 ${rawHint.value}，不要同时看其他数字。`,
         `在 ${unitLabel} 里，数字 ${rawHint.value} 最终只剩 ${cellLabel} 这一个位置能放。`,
         `虽然 ${cellLabel} 不一定只有一个候选，但对数字 ${rawHint.value} 来说它是唯一落点，所以 ${cellLabel} = ${rawHint.value}。`
-      ],
-      highlightMode: "observe-digit"
+      ]
     };
   }
 
@@ -71,8 +69,7 @@ function buildHintDetail(rawHint: RawHint): HintDetail {
       `这一步不是严格的教学提示，而是直接给出 ${cellLabel} 的正确数字。`,
       "它适合卡住时打破停滞，但不会替代正常的观察训练。",
       "填入之后，优先继续扫描新的裸单或隐藏单。"
-    ],
-    highlightMode: "board-selected"
+    ]
   };
 }
 

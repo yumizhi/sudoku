@@ -1,6 +1,10 @@
 import { useEffect } from "react";
-import { calculateConflicts, makeCellKey } from "../../../domain/sudoku";
 import type { Digit } from "../../../domain/sudoku";
+import {
+  computeHighlights,
+  getCellVisualState,
+  isCandidateDigitHighlighted
+} from "../highlights";
 import type { GameState } from "../types";
 
 interface BoardProps {
@@ -20,14 +24,25 @@ function makeCellAriaLabel(state: GameState, row: number, col: number): string {
   return `${base}，空格`;
 }
 
-function renderNotes(notes: Digit[]): JSX.Element {
+function renderNotes(
+  notes: Digit[],
+  emphasizedDigit: Digit | null,
+  emphasizeDigit: boolean
+): JSX.Element {
   const noteSet = new Set(notes);
   return (
     <div className="grid h-full w-full grid-cols-3 gap-px p-1 text-[clamp(0.45rem,0.8vw,0.72rem)] font-semibold text-slate-500">
       {Array.from({ length: 9 }, (_, index) => {
         const digit = (index + 1) as Digit;
+        const active = emphasizeDigit && emphasizedDigit === digit && noteSet.has(digit);
         return (
-          <span key={digit} className="grid place-items-center">
+          <span
+            key={digit}
+            className={[
+              "grid place-items-center rounded-[0.32rem]",
+              active ? "bg-[#2489f0] text-white" : ""
+            ].join(" ")}
+          >
             {noteSet.has(digit) ? digit : ""}
           </span>
         );
@@ -40,13 +55,15 @@ export function Board({
   state,
   onSelectCell
 }: BoardProps): JSX.Element {
-  const conflicts = calculateConflicts(state.board);
   const selected = state.selected;
-  const boardSelectedCell = state.interactionMode === "board-selected" ? state.selectedCell : null;
-  const boardSelectedDigit =
-    boardSelectedCell !== null ? state.board[boardSelectedCell.row][boardSelectedCell.col] : null;
-  const observedDigit = state.interactionMode === "observe-digit" ? state.observedDigit : null;
-  const interactionDigit = observedDigit ?? boardSelectedDigit;
+  const highlightState = computeHighlights({
+    board: state.board,
+    fixed: state.fixed,
+    notes: state.notes,
+    selectedCell: state.selected,
+    selectedDigit: state.selectedDigit,
+    lastChangedCell: state.lastChangedCell
+  });
 
   useEffect(() => {
     if (!selected) {
@@ -70,39 +87,55 @@ export function Board({
           rowValues.map((value, col) => {
             const isSelected = selected?.row === row && selected?.col === col;
             const isFixed = state.fixed[row][col];
-            const isConflict = conflicts.has(makeCellKey(row, col));
             const isMistake =
               state.showValidation &&
               !isFixed &&
               value !== 0 &&
               value !== state.solution[row][col];
-            const isBoardSelectedSource = boardSelectedCell?.row === row && boardSelectedCell?.col === col;
-            const isSameValue = interactionDigit !== null && value !== 0 && value === interactionDigit;
+            const highlight = highlightState.cells[row][col];
+            const visualState = getCellVisualState(highlight);
+            const emphasizeCandidateDigit = isCandidateDigitHighlighted(
+              state.notes[row][col],
+              highlightState.candidateDigit,
+              highlight
+            );
 
             let toneClass = isFixed ? "bg-stone-100 text-slate-900" : "bg-white text-tide";
             let borderClass = "border-slate-300";
             let ringClass = "";
 
-            if (isSameValue) {
-              toneClass = "bg-[#2489f0] text-white";
-              borderClass = "border-[#2489f0]";
-            }
-
-            if (isSelected && value === 0) {
-              toneClass = "bg-[#eef5ff] text-slate-900";
-              borderClass = "border-[#7ea6ec]";
-              ringClass = "ring-2 ring-inset ring-[#7ea6ec]";
-            }
-
-            if (isSelected && value !== 0) {
-              if (isBoardSelectedSource || state.interactionMode !== "observe-digit") {
-                toneClass = "bg-[#79a9ff] text-white";
+            switch (visualState) {
+              case "conflict":
+                toneClass = "bg-ember/20 text-ember";
+                break;
+              case "selected":
+                toneClass = value === 0 ? "bg-[#eef5ff] text-slate-900" : "bg-[#79a9ff] text-white";
                 borderClass = "border-[#6f98e9]";
-              }
-              ringClass = "ring-2 ring-inset ring-[#6f98e9]";
+                ringClass = "ring-2 ring-inset ring-[#6f98e9]";
+                break;
+              case "same-number":
+                toneClass = "bg-[#2489f0] text-white";
+                borderClass = "border-[#2489f0]";
+                break;
+              case "related-row-col":
+                toneClass = "bg-[#dbe9fb] text-slate-900";
+                break;
+              case "related-box":
+                toneClass = "bg-[#edf4ff] text-slate-700";
+                break;
+              case "candidate-match":
+                toneClass = "bg-[#edf4ff] text-slate-900";
+                borderClass = "border-[#8ebcff]";
+                ringClass = "ring-1 ring-inset ring-[#8ebcff]";
+                break;
+              case "last-modified":
+                ringClass = "ring-1 ring-inset ring-[#9dc0ff]";
+                break;
+              default:
+                break;
             }
 
-            if (isConflict) {
+            if (highlight.conflict) {
               toneClass = "bg-ember/20 text-ember";
               borderClass = "border-slate-300";
               ringClass = "";
@@ -127,7 +160,7 @@ export function Board({
                 aria-rowindex={row + 1}
                 aria-colindex={col + 1}
                 aria-selected={isSelected}
-                aria-invalid={isConflict || isMistake}
+                aria-invalid={highlight.conflict || isMistake}
                 aria-label={makeCellAriaLabel(state, row, col)}
                 tabIndex={isSelected ? 0 : -1}
                 data-row={row}
@@ -142,7 +175,15 @@ export function Board({
                 }}
                 onClick={() => onSelectCell(row, col)}
               >
-                {value !== 0 ? value : state.notes[row][col].length > 0 ? renderNotes(state.notes[row][col]) : null}
+                {value !== 0
+                  ? value
+                  : state.notes[row][col].length > 0
+                    ? renderNotes(
+                        state.notes[row][col],
+                        highlightState.candidateDigit,
+                        emphasizeCandidateDigit
+                      )
+                    : null}
               </button>
             );
           })

@@ -12,7 +12,6 @@ export interface CellPosition {
 export type Difficulty = "easy" | "medium" | "hard";
 export type GameMode = "normal" | "tutorial";
 export type GameStatus = "idle" | "playing" | "won";
-export type HintHighlightMode = "board-selected" | "observe-digit";
 
 export interface DifficultyDefinition {
   label: string;
@@ -33,7 +32,6 @@ export interface HintDetail {
   technique: "裸单" | "隐藏单" | "揭示";
   summary: string;
   steps: string[];
-  highlightMode: HintHighlightMode;
 }
 
 export interface TutorialLevel {
