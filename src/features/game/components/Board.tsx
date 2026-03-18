@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   calculateConflicts,
   getCandidates,
@@ -54,6 +55,17 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
   const hasGlobalDigitFocus = hasDigitFocus && state.focusScope === "global";
   const hasCellLineFocus = !hasDigitFocus && selectedValue !== 0;
 
+  useEffect(() => {
+    if (!selected) {
+      return;
+    }
+
+    const element = document.querySelector<HTMLButtonElement>(
+      `[data-row="${selected.row}"][data-col="${selected.col}"]`
+    );
+    element?.focus({ preventScroll: true });
+  }, [selected]);
+
   return (
     <div className="board-grid mx-auto w-full max-w-[42rem] rounded-[2rem] border border-slate-300/80 bg-slate-300 p-[6px] shadow-board">
       <div
@@ -84,8 +96,7 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
             const isDigitMatch =
               (hasLocalDigitPreview &&
                 selected !== null &&
-                row !== selected.row &&
-                col !== selected.col &&
+                !(row === selected.row && col === selected.col) &&
                 value !== 0 &&
                 value === state.focusDigit &&
                 isPeer(selected.row, selected.col, row, col)) ||
@@ -117,6 +128,8 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
                 aria-invalid={isConflict || isMistake}
                 aria-label={makeCellAriaLabel(state, row, col)}
                 tabIndex={isSelected ? 0 : -1}
+                data-row={row}
+                data-col={col}
                 className={classes}
                 disabled={state.generating}
                 style={{
