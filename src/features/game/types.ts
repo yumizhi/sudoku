@@ -17,16 +17,19 @@ export interface MessageState {
   tone: MessageTone;
 }
 
-export type InteractionMode = "none" | "board-selected" | "observe-digit";
+export type DigitMode = "input" | "observe";
+
+export interface FocusState {
+  digitMode: DigitMode;
+  cell: CellPosition | null;
+  selectedDigit: Digit | null;
+  observedDigit: Digit | null;
+}
 
 export interface HistorySnapshot {
   board: Grid;
   notes: NotesGrid;
-  selected: CellPosition | null;
-  selectedCell: CellPosition | null;
-  interactionMode: InteractionMode;
-  selectedDigit: Digit | null;
-  observedDigit: Digit | null;
+  focus: FocusState;
   lastChangedCell: CellPosition | null;
   noteMode: boolean;
   mistakes: number;
@@ -41,11 +44,7 @@ export interface GameState {
   board: Grid;
   fixed: BoolGrid;
   notes: NotesGrid;
-  selected: CellPosition | null;
-  selectedCell: CellPosition | null;
-  interactionMode: InteractionMode;
-  selectedDigit: Digit | null;
-  observedDigit: Digit | null;
+  focus: FocusState;
   lastChangedCell: CellPosition | null;
   pendingHint: HintDetail | null;
   noteMode: boolean;
@@ -68,11 +67,14 @@ export interface GameLoadPayload {
   solution: Grid;
   board?: Grid;
   notes?: NotesGrid;
+  focus?: Partial<FocusState>;
+
+  // Legacy persisted fields kept for backward-compatible restores.
   selected?: CellPosition | null;
   selectedCell?: CellPosition | null;
-  interactionMode?: InteractionMode;
   selectedDigit?: Digit | null;
   observedDigit?: Digit | null;
+  interactionMode?: "none" | "board-selected" | "observe-digit";
   lastChangedCell?: CellPosition | null;
   noteMode?: boolean;
   mistakes?: number;

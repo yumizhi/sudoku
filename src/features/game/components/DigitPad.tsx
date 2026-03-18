@@ -27,8 +27,8 @@ export function DigitPad({
   }
 
   function renderDigitButton(digit: Digit, mobile: boolean): JSX.Element {
-    const complete = counts[digit] === 9;
-    const active = mode === "observe" && activeDigit === digit;
+    const saturated = counts[digit] >= 9;
+    const active = activeDigit === digit;
     const icon = mode === "observe" ? <EyeIcon className="h-4 w-4" /> : <NoteIcon className="h-4 w-4" />;
 
     return (
@@ -42,8 +42,8 @@ export function DigitPad({
             : "px-2 py-2.5 sm:px-2.5 sm:py-3",
           active
             ? "border-[#2489f0] bg-[#2489f0] text-white shadow-lg shadow-sky-200"
-            : complete
-              ? "border-pine/30 bg-pine/10 text-pine"
+            : saturated
+              ? "border-slate-300 bg-slate-100 text-slate-700"
               : "border-slate-200 bg-white/85 text-slate-900 hover:border-tide/25 hover:bg-tide/5"
         ].join(" ")}
         disabled={state.generating}

@@ -12,7 +12,31 @@ import {
   isValidTutorialId
 } from "../../domain/sudoku";
 import type { Difficulty, Digit, GameMode, Grid, NotesGrid } from "../../domain/sudoku";
-import type { GameLoadPayload, GameState, InteractionMode } from "./types";
+import type { DigitMode, FocusState, GameLoadPayload, GameState } from "./types";
+
+interface PersistedFocusV4 {
+  digitMode: DigitMode;
+  cell: { row: number; col: number } | null;
+  selectedDigit: Digit | null;
+  observedDigit: Digit | null;
+}
+
+interface PersistedGameV4 {
+  version: 4;
+  difficulty: Difficulty;
+  seed: number;
+  mode: GameMode;
+  tutorialId: string | null;
+  puzzle: string;
+  solution: string;
+  board: string;
+  notes: number[][][];
+  focus: PersistedFocusV4;
+  noteMode: boolean;
+  mistakes: number;
+  elapsedSeconds: number;
+  status: "playing" | "won";
+}
 
 interface PersistedGameV3 {
   version: 3;
@@ -25,7 +49,7 @@ interface PersistedGameV3 {
   board: string;
   notes: number[][][];
   selected: { row: number; col: number } | null;
-  interactionMode: InteractionMode;
+  interactionMode: "none" | "board-selected" | "observe-digit";
   selectedCell: { row: number; col: number } | null;
   observedDigit: Digit | null;
   noteMode: boolean;
@@ -74,62 +98,98 @@ function isValidDigit(value: unknown): value is Digit | null {
   return value === null || (typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 9);
 }
 
+function isValidDigitMode(value: unknown): value is DigitMode {
+  return value === "input" || value === "observe";
+}
+
 function isValidLegacyFocusScope(value: unknown): value is "local" | "global" | null {
   return value === null || value === "local" || value === "global";
 }
 
-function isValidInteractionMode(value: unknown): value is InteractionMode {
+function isValidLegacyInteractionMode(
+  value: unknown
+): value is "none" | "board-selected" | "observe-digit" {
   return value === "none" || value === "board-selected" || value === "observe-digit";
 }
 
-function deriveInteractionFromLegacy(
-  board: Grid,
-  selected: { row: number; col: number } | null,
-  focusDigit: Digit | null,
-  focusScope: "local" | "global" | null
-): Pick<GameLoadPayload, "interactionMode" | "selectedCell" | "observedDigit"> {
-  if (focusScope === "global" && focusDigit !== null) {
-    return {
-      interactionMode: "observe-digit",
-      selectedCell: null,
-      observedDigit: focusDigit
-    };
-  }
-
-  if (selected && board[selected.row][selected.col] !== 0) {
-    return {
-      interactionMode: "board-selected",
-      selectedCell: selected,
-      observedDigit: null
-    };
-  }
-
+function normalizeFocus(focus: FocusState): FocusState {
   return {
-    interactionMode: "none",
-    selectedCell: null,
-    observedDigit: null
+    digitMode: focus.digitMode,
+    cell: focus.cell ? { ...focus.cell } : null,
+    selectedDigit: focus.digitMode === "input" ? focus.selectedDigit : null,
+    observedDigit: focus.digitMode === "observe" ? focus.observedDigit : null
   };
 }
 
-function isConsistentInteraction(
-  board: Grid,
-  interactionMode: InteractionMode,
+function deriveFocusFromLegacy(
+  selected: { row: number; col: number } | null,
   selectedCell: { row: number; col: number } | null,
-  observedDigit: Digit | null
-): boolean {
-  if (interactionMode === "none") {
-    return selectedCell === null && observedDigit === null;
+  focusDigit: Digit | null,
+  focusScope: "local" | "global" | null,
+  interactionMode?: "none" | "board-selected" | "observe-digit"
+): FocusState {
+  const digitMode: DigitMode =
+    interactionMode === "observe-digit" || focusScope === "global" ? "observe" : "input";
+
+  return normalizeFocus({
+    digitMode,
+    cell: selected ?? selectedCell ?? null,
+    selectedDigit: digitMode === "input" ? focusDigit : null,
+    observedDigit: digitMode === "observe" ? focusDigit : null
+  });
+}
+
+function parsePersistedV4(payload: unknown): GameLoadPayload | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
   }
 
-  if (interactionMode === "board-selected") {
-    return (
-      selectedCell !== null &&
-      board[selectedCell.row][selectedCell.col] !== 0 &&
-      observedDigit === null
-    );
+  const candidate = payload as PersistedGameV4;
+  const puzzle = gridFromString(candidate.puzzle, true);
+  const solution = gridFromString(candidate.solution, false);
+  const board = gridFromString(candidate.board, true);
+
+  if (
+    candidate.version !== 4 ||
+    !(candidate.difficulty in DIFFICULTY_CONFIG) ||
+    !Number.isInteger(candidate.seed) ||
+    candidate.seed < 1 ||
+    !puzzle ||
+    !solution ||
+    !board ||
+    !isValidNoteGrid(candidate.notes) ||
+    !candidate.focus ||
+    !isValidDigitMode(candidate.focus.digitMode) ||
+    !isValidSelectedCell(candidate.focus.cell) ||
+    !isValidDigit(candidate.focus.selectedDigit) ||
+    !isValidDigit(candidate.focus.observedDigit) ||
+    typeof candidate.noteMode !== "boolean" ||
+    !Number.isInteger(candidate.mistakes) ||
+    candidate.mistakes < 0 ||
+    !Number.isInteger(candidate.elapsedSeconds) ||
+    candidate.elapsedSeconds < 0 ||
+    (candidate.status !== "playing" && candidate.status !== "won") ||
+    (candidate.mode !== "normal" && candidate.mode !== "tutorial") ||
+    !(candidate.tutorialId === null || isValidTutorialId(candidate.tutorialId))
+  ) {
+    return null;
   }
 
-  return selectedCell === null && observedDigit !== null;
+  return {
+    difficulty: candidate.difficulty,
+    seed: candidate.seed,
+    puzzle,
+    solution,
+    board,
+    notes: cloneNotes(candidate.notes as NotesGrid),
+    focus: normalizeFocus(candidate.focus),
+    noteMode: candidate.noteMode,
+    mistakes: candidate.mistakes,
+    elapsedSeconds: candidate.elapsedSeconds,
+    status: candidate.status,
+    mode: candidate.mode,
+    tutorialId: candidate.mode === "tutorial" ? candidate.tutorialId : null
+  };
 }
 
 function parsePersistedV3(payload: unknown): GameLoadPayload | null {
@@ -152,10 +212,9 @@ function parsePersistedV3(payload: unknown): GameLoadPayload | null {
     !board ||
     !isValidNoteGrid(candidate.notes) ||
     !isValidSelectedCell(candidate.selected) ||
-    !isValidInteractionMode(candidate.interactionMode) ||
+    !isValidLegacyInteractionMode(candidate.interactionMode) ||
     !isValidSelectedCell(candidate.selectedCell) ||
     !isValidDigit(candidate.observedDigit) ||
-    !isConsistentInteraction(board, candidate.interactionMode, candidate.selectedCell, candidate.observedDigit) ||
     typeof candidate.noteMode !== "boolean" ||
     !Number.isInteger(candidate.mistakes) ||
     candidate.mistakes < 0 ||
@@ -175,10 +234,13 @@ function parsePersistedV3(payload: unknown): GameLoadPayload | null {
     solution,
     board,
     notes: cloneNotes(candidate.notes as NotesGrid),
-    selected: candidate.selected,
-    interactionMode: candidate.interactionMode,
-    selectedCell: candidate.selectedCell,
-    observedDigit: candidate.observedDigit,
+    focus: deriveFocusFromLegacy(
+      candidate.selected,
+      candidate.selectedCell,
+      candidate.observedDigit,
+      candidate.interactionMode === "observe-digit" ? "global" : null,
+      candidate.interactionMode
+    ),
     noteMode: candidate.noteMode,
     mistakes: candidate.mistakes,
     elapsedSeconds: candidate.elapsedSeconds,
@@ -229,8 +291,7 @@ function parsePersistedV2(payload: unknown): GameLoadPayload | null {
     solution,
     board,
     notes: cloneNotes(candidate.notes as NotesGrid),
-    selected: candidate.selected,
-    ...deriveInteractionFromLegacy(board, candidate.selected, candidate.focusDigit, candidate.focusScope),
+    focus: deriveFocusFromLegacy(candidate.selected, null, candidate.focusDigit, candidate.focusScope),
     noteMode: candidate.noteMode,
     mistakes: candidate.mistakes,
     elapsedSeconds: candidate.elapsedSeconds,
@@ -275,13 +336,7 @@ function parseLegacyV1(payload: unknown): GameLoadPayload | null {
     solution: cloneGrid(candidate.solution),
     board: cloneGrid(candidate.board),
     notes: cloneNotes(candidate.notes as NotesGrid),
-    selected: candidate.selected,
-    ...deriveInteractionFromLegacy(
-      candidate.board,
-      candidate.selected,
-      candidate.focusDigit,
-      candidate.focusScope
-    ),
+    focus: deriveFocusFromLegacy(candidate.selected, null, candidate.focusDigit, candidate.focusScope),
     noteMode: candidate.noteMode,
     mistakes: candidate.mistakes,
     elapsedSeconds: candidate.elapsedSeconds,
@@ -296,7 +351,7 @@ export function loadPersistedGame(): GameLoadPayload | null {
     const modern = window.localStorage.getItem(STORAGE_KEY);
     if (modern) {
       const parsed = JSON.parse(modern);
-      return parsePersistedV3(parsed) ?? parsePersistedV2(parsed);
+      return parsePersistedV4(parsed) ?? parsePersistedV3(parsed) ?? parsePersistedV2(parsed);
     }
 
     const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
@@ -315,8 +370,8 @@ export function savePersistedGame(state: GameState): void {
     return;
   }
 
-  const payload: PersistedGameV3 = {
-    version: 3,
+  const payload: PersistedGameV4 = {
+    version: 4,
     difficulty: state.difficulty,
     seed: state.seed,
     mode: state.mode,
@@ -325,10 +380,7 @@ export function savePersistedGame(state: GameState): void {
     solution: gridToString(state.solution),
     board: gridToString(state.board),
     notes: cloneNotes(state.notes),
-    selected: state.selected ? { ...state.selected } : null,
-    interactionMode: state.interactionMode,
-    selectedCell: state.selectedCell ? { ...state.selectedCell } : null,
-    observedDigit: state.observedDigit,
+    focus: normalizeFocus(state.focus),
     noteMode: state.noteMode,
     mistakes: state.mistakes,
     elapsedSeconds: state.elapsedSeconds,

@@ -1,10 +1,14 @@
 import { useEffect } from "react";
+import { makeCellKey } from "../../../domain/sudoku";
 import type { Digit } from "../../../domain/sudoku";
 import {
   computeHighlights,
-  getCellVisualState,
   isCandidateDigitHighlighted
 } from "../highlights";
+import {
+  getCandidateFocusDigit,
+  getFocusDigit
+} from "../gameReducer";
 import type { GameState } from "../types";
 
 interface BoardProps {
@@ -39,7 +43,7 @@ function renderNotes(
           <span
             key={digit}
             className={[
-              "grid place-items-center rounded-[0.32rem]",
+              "grid place-items-center rounded-[0.32rem] transition-colors",
               active ? "bg-[#2489f0] text-white" : ""
             ].join(" ")}
           >
@@ -51,26 +55,87 @@ function renderNotes(
   );
 }
 
+function buildCellClasses(
+  value: number,
+  fixed: boolean,
+  highlight: ReturnType<typeof computeHighlights>["cells"][number][number]
+): string {
+  let toneClass = fixed ? "bg-stone-100 text-slate-900" : "bg-white text-tide";
+  let borderClass = "border-slate-300";
+  let effectClass = "";
+
+  if (highlight.peerBox) {
+    toneClass = fixed ? "bg-stone-50 text-slate-900" : "bg-[#f6faff] text-slate-900";
+  }
+
+  if (highlight.peerRowCol) {
+    toneClass = fixed ? "bg-stone-100 text-slate-900" : "bg-[#edf4ff] text-slate-900";
+  }
+
+  if (highlight.sameDigit) {
+    toneClass = value === 0 ? "bg-[#e5f0ff] text-slate-900" : "bg-[#d6e8ff] text-slate-900";
+  }
+
+  if (highlight.candidateMatch && value === 0) {
+    toneClass = "bg-[#f2f8ff] text-slate-900";
+    effectClass = "shadow-[inset_0_0_0_1px_rgba(36,137,240,0.35)]";
+  }
+
+  if (highlight.lastModified && !highlight.selected) {
+    effectClass = "shadow-[inset_0_0_0_1px_rgba(36,137,240,0.18)]";
+  }
+
+  if (highlight.checkError) {
+    borderClass = "border-ember";
+    toneClass = value === 0 ? "bg-[#fff5f4] text-ember" : "bg-[#fff0ee] text-ember";
+  }
+
+  if (highlight.conflict) {
+    borderClass = "border-ember";
+    toneClass = value === 0 ? "bg-[#ffeceb] text-ember" : "bg-[#ffe3e1] text-ember";
+  }
+
+  if (highlight.selected) {
+    toneClass = value === 0 ? "bg-[#eef6ff] text-slate-900" : "bg-[#cfe2ff] text-slate-900";
+    effectClass = "ring-2 ring-inset ring-[#1f6ed5]";
+  }
+
+  return [
+    "relative grid aspect-square place-items-center border text-[clamp(1rem,2.2vw,1.65rem)] font-bold leading-none transition-colors duration-150 focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/60",
+    toneClass,
+    borderClass,
+    effectClass
+  ].join(" ");
+}
+
 export function Board({
   state,
   onSelectCell
 }: BoardProps): JSX.Element {
-  const selected = state.selected;
-  const highlightedCell =
-    state.interactionMode === "observe-digit"
-      ? null
-      : state.interactionMode === "board-selected"
-        ? state.selectedCell
-        : state.selected;
-  const highlightedDigit =
-    state.interactionMode === "observe-digit" ? state.observedDigit : state.selectedDigit;
+  const selected = state.focus.cell;
+  const validationErrors = new Set<string>();
+  if (state.showValidation) {
+    for (let row = 0; row < 9; row += 1) {
+      for (let col = 0; col < 9; col += 1) {
+        const value = state.board[row][col];
+        if (!state.fixed[row][col] && value !== 0 && value !== state.solution[row][col]) {
+          validationErrors.add(makeCellKey(row, col));
+        }
+      }
+    }
+  }
+
+  const focusDigit = getFocusDigit(state);
+  const candidateDigit = getCandidateFocusDigit(state);
   const highlightState = computeHighlights({
     board: state.board,
     fixed: state.fixed,
     notes: state.notes,
-    selectedCell: highlightedCell,
-    selectedDigit: highlightedDigit,
-    lastChangedCell: state.lastChangedCell
+    selectedCell: selected,
+    focusDigit,
+    candidateDigit,
+    lastChangedCell: state.lastChangedCell,
+    validationErrors
   });
 
   useEffect(() => {
@@ -94,71 +159,12 @@ export function Board({
         {state.board.map((rowValues, row) =>
           rowValues.map((value, col) => {
             const isSelected = selected?.row === row && selected?.col === col;
-            const isFixed = state.fixed[row][col];
-            const isMistake =
-              state.showValidation &&
-              !isFixed &&
-              value !== 0 &&
-              value !== state.solution[row][col];
             const highlight = highlightState.cells[row][col];
-            const visualState = getCellVisualState(highlight);
             const emphasizeCandidateDigit = isCandidateDigitHighlighted(
               state.notes[row][col],
               highlightState.candidateDigit,
               highlight
             );
-
-            let toneClass = isFixed ? "bg-stone-100 text-slate-900" : "bg-white text-tide";
-            let borderClass = "border-slate-300";
-            let ringClass = "";
-
-            switch (visualState) {
-              case "conflict":
-                toneClass = "bg-ember/20 text-ember";
-                break;
-              case "selected":
-                toneClass = value === 0 ? "bg-[#eef5ff] text-slate-900" : "bg-[#79a9ff] text-white";
-                borderClass = "border-[#6f98e9]";
-                ringClass = "ring-2 ring-inset ring-[#6f98e9]";
-                break;
-              case "same-number":
-                toneClass = "bg-[#2489f0] text-white";
-                borderClass = "border-[#2489f0]";
-                break;
-              case "related-row-col":
-                toneClass = "bg-[#dbe9fb] text-slate-900";
-                break;
-              case "related-box":
-                toneClass = "bg-[#edf4ff] text-slate-700";
-                break;
-              case "candidate-match":
-                toneClass = "bg-[#edf4ff] text-slate-900";
-                borderClass = "border-[#8ebcff]";
-                ringClass = "ring-1 ring-inset ring-[#8ebcff]";
-                break;
-              case "last-modified":
-                ringClass = "ring-1 ring-inset ring-[#9dc0ff]";
-                break;
-              default:
-                break;
-            }
-
-            if (highlight.conflict) {
-              toneClass = "bg-ember/20 text-ember";
-              borderClass = "border-slate-300";
-              ringClass = "";
-            } else if (isMistake) {
-              toneClass = "bg-ember/10 text-ember";
-              borderClass = "border-slate-300";
-              ringClass = "";
-            }
-
-            const classes = [
-              "relative grid aspect-square place-items-center border text-[clamp(1rem,2.2vw,1.65rem)] font-bold leading-none transition-colors duration-150 focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/60",
-              toneClass,
-              borderClass,
-              ringClass
-            ].join(" ");
 
             return (
               <button
@@ -168,12 +174,12 @@ export function Board({
                 aria-rowindex={row + 1}
                 aria-colindex={col + 1}
                 aria-selected={isSelected}
-                aria-invalid={highlight.conflict || isMistake}
+                aria-invalid={highlight.conflict || highlight.checkError}
                 aria-label={makeCellAriaLabel(state, row, col)}
                 tabIndex={isSelected ? 0 : -1}
                 data-row={row}
                 data-col={col}
-                className={classes}
+                className={buildCellClasses(value, state.fixed[row][col], highlight)}
                 disabled={state.generating}
                 style={{
                   borderTopWidth: row === 0 || row % 3 === 0 ? "2px" : "1px",

@@ -26,88 +26,72 @@ function makeState() {
   });
 }
 
-describe("gameReducer", () => {
-  it("starts with no board or observe highlight", () => {
+describe("gameReducer focus model", () => {
+  it("starts in global input mode with the first empty cell selected", () => {
     const state = makeState();
 
-    expect(state.interactionMode).toBe("none");
-    expect(state.selectedCell).toBeNull();
-    expect(state.observedDigit).toBeNull();
+    expect(state.focus.digitMode).toBe("input");
+    expect(state.focus.cell).toEqual({ row: 0, col: 0 });
+    expect(state.focus.selectedDigit).toBeNull();
+    expect(state.focus.observedDigit).toBeNull();
   });
 
-  it("allows overwriting a filled editable cell directly", () => {
-    let state = makeState();
+  it("uses pressDigit for input mode and keeps the input focus digit active", () => {
+    const state = gameReducer(makeState(), { type: "pressDigit", digit: 1 });
 
-    state = gameReducer(state, { type: "inputDigit", digit: 1 });
     expect(state.board[0][0]).toBe(1);
+    expect(state.focus.digitMode).toBe("input");
+    expect(state.focus.cell).toEqual({ row: 0, col: 0 });
+    expect(state.focus.selectedDigit).toBe(1);
+    expect(state.focus.observedDigit).toBeNull();
+  });
 
-    const next = gameReducer(state, { type: "inputDigit", digit: 3 });
+  it("switching input -> observe clears selectedDigit", () => {
+    let state = gameReducer(makeState(), { type: "pressDigit", digit: 1 });
+    state = gameReducer(state, { type: "setDigitMode", mode: "observe" });
+
+    expect(state.focus.digitMode).toBe("observe");
+    expect(state.focus.selectedDigit).toBeNull();
+    expect(state.focus.observedDigit).toBeNull();
+  });
+
+  it("observe mode toggles observedDigit without editing the board", () => {
+    let state = gameReducer(makeState(), { type: "setDigitMode", mode: "observe" });
+    state = gameReducer(state, { type: "pressDigit", digit: 5 });
+
+    expect(state.focus.digitMode).toBe("observe");
+    expect(state.focus.observedDigit).toBe(5);
+    expect(state.board[0][0]).toBe(0);
+
+    state = gameReducer(state, { type: "pressDigit", digit: 5 });
+    expect(state.focus.observedDigit).toBeNull();
+    expect(state.board[0][0]).toBe(0);
+  });
+
+  it("switching observe -> input clears observedDigit", () => {
+    let state = gameReducer(makeState(), { type: "setDigitMode", mode: "observe" });
+    state = gameReducer(state, { type: "pressDigit", digit: 5 });
+    state = gameReducer(state, { type: "setDigitMode", mode: "input" });
+
+    expect(state.focus.digitMode).toBe("input");
+    expect(state.focus.observedDigit).toBeNull();
+  });
+
+  it("keeps focus digit when selecting a new empty cell in input mode", () => {
+    let state = gameReducer(makeState(), { type: "pressDigit", digit: 4 });
+    state = gameReducer(state, { type: "selectCell", row: 1, col: 1 });
+
+    expect(state.focus.cell).toEqual({ row: 1, col: 1 });
+    expect(state.focus.selectedDigit).toBe(4);
+  });
+
+  it("allows overwriting a filled editable cell directly through the same pressDigit path", () => {
+    let state = gameReducer(makeState(), { type: "pressDigit", digit: 1 });
+    const next = gameReducer(state, { type: "pressDigit", digit: 3 });
+
     expect(next.board[0][0]).toBe(3);
     expect(next.message.text).toBe("已填入 3。");
     expect(next.history).toHaveLength(2);
-  });
-
-  it("keeps fill feedback neutral even when the number is wrong", () => {
-    const state = makeState();
-    const next = gameReducer(state, { type: "inputDigit", digit: 1 });
-
-    expect(next.message.text).toBe("已填入 1。");
-    expect(next.message.tone).toBe("info");
-  });
-
-  it("enters board-selected when clicking a filled cell and toggles off on second click", () => {
-    let state = makeState();
-    state = gameReducer(state, { type: "interactWithBoardCell", row: 0, col: 2 });
-
-    expect(state.interactionMode).toBe("board-selected");
-    expect(state.selectedCell).toEqual({ row: 0, col: 2 });
-    expect(state.observedDigit).toBeNull();
-
-    state = gameReducer(state, { type: "interactWithBoardCell", row: 0, col: 2 });
-    expect(state.interactionMode).toBe("none");
-    expect(state.selectedCell).toBeNull();
-    expect(state.observedDigit).toBeNull();
-  });
-
-  it("keeps empty-cell selection visible without entering digit highlight mode", () => {
-    const state = gameReducer(makeState(), { type: "interactWithBoardCell", row: 0, col: 0 });
-
-    expect(state.selected).toEqual({ row: 0, col: 0 });
-    expect(state.interactionMode).toBe("none");
-    expect(state.selectedCell).toBeNull();
-    expect(state.observedDigit).toBeNull();
-  });
-
-  it("observe digit replaces board-selected and toggles off on repeated click", () => {
-    let state = makeState();
-    state = gameReducer(state, { type: "interactWithBoardCell", row: 0, col: 2 });
-    state = gameReducer(state, { type: "toggleObserveDigit", digit: 5 });
-
-    expect(state.interactionMode).toBe("observe-digit");
-    expect(state.selectedCell).toBeNull();
-    expect(state.observedDigit).toBe(5);
-
-    state = gameReducer(state, { type: "toggleObserveDigit", digit: 5 });
-    expect(state.interactionMode).toBe("none");
-    expect(state.selectedCell).toBeNull();
-    expect(state.observedDigit).toBeNull();
-  });
-
-  it("switches from observe-digit to board-selected when clicking a filled cell", () => {
-    let state = makeState();
-    state = gameReducer(state, { type: "toggleObserveDigit", digit: 5 });
-    state = gameReducer(state, { type: "interactWithBoardCell", row: 0, col: 2 });
-
-    expect(state.interactionMode).toBe("board-selected");
-    expect(state.selectedCell).toEqual({ row: 0, col: 2 });
-    expect(state.observedDigit).toBeNull();
-  });
-
-  it("promotes a successful digit input into board-selected same-digit highlight", () => {
-    const state = gameReducer(makeState(), { type: "inputDigit", digit: 1 });
-
-    expect(state.interactionMode).toBe("board-selected");
-    expect(state.selectedCell).toEqual({ row: 0, col: 0 });
-    expect(state.observedDigit).toBeNull();
+    expect(next.focus.selectedDigit).toBe(3);
   });
 });

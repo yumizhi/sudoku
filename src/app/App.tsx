@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { DIFFICULTY_CONFIG, getTutorialById } from "../domain/sudoku";
 import type { Digit } from "../domain/sudoku";
-import { describeSelectedCell, formatTime } from "../features/game/gameReducer";
+import {
+  describeSelectedCell,
+  formatTime,
+  getFocusDigit
+} from "../features/game/gameReducer";
 import { Board } from "../features/game/components/Board";
 import { DigitPad } from "../features/game/components/DigitPad";
 import { HintModal } from "../features/game/components/HintModal";
@@ -21,40 +25,21 @@ import { useSudokuGame } from "../features/game/useSudokuGame";
 
 export default function App(): JSX.Element {
   const { state, dispatch, startNewGame, startTutorial } = useSudokuGame();
-  const [digitPadMode, setDigitPadMode] = useState<"input" | "observe">("input");
   const [tutorialPickerOpen, setTutorialPickerOpen] = useState(false);
   const [tutorialGuideOpen, setTutorialGuideOpen] = useState(false);
 
   const detail = describeSelectedCell(state);
   const tutorial = getTutorialById(state.tutorialId);
+  const activeDigit = getFocusDigit(state);
   const activeObservedDigit =
-    state.interactionMode === "observe-digit" && digitPadMode === "observe"
-      ? state.observedDigit
-      : null;
-  const activeBoardDigit =
-    state.interactionMode === "board-selected" && state.selectedCell
-      ? state.board[state.selectedCell.row][state.selectedCell.col]
-      : 0;
+    state.focus.digitMode === "observe" ? state.focus.observedDigit : null;
 
   function handleDigitClick(digit: Digit): void {
-    if (digitPadMode === "observe") {
-      dispatch({ type: "toggleObserveDigit", digit });
-      return;
-    }
-
-    if (activeBoardDigit !== 0 && activeBoardDigit === digit) {
-      dispatch({ type: "clearInteraction" });
-      return;
-    }
-
-    dispatch({ type: "inputDigit", digit });
+    dispatch({ type: "pressDigit", digit });
   }
 
   function handleDigitModeChange(mode: "input" | "observe"): void {
-    setDigitPadMode(mode);
-    if (mode === "input" && state.interactionMode === "observe-digit") {
-      dispatch({ type: "clearInteraction" });
-    }
+    dispatch({ type: "setDigitMode", mode });
   }
 
   function handleStartTutorial(levelId: string): void {
@@ -118,7 +103,7 @@ export default function App(): JSX.Element {
             <div className="flex min-h-0 flex-1 items-center justify-center">
               <Board
                 state={state}
-                onSelectCell={(row, col) => dispatch({ type: "interactWithBoardCell", row, col })}
+                onSelectCell={(row, col) => dispatch({ type: "selectCell", row, col })}
               />
             </div>
           </section>
@@ -254,8 +239,8 @@ export default function App(): JSX.Element {
               ) : null}
 
               <DigitPad
-                activeDigit={activeObservedDigit}
-                mode={digitPadMode}
+                activeDigit={activeDigit}
+                mode={state.focus.digitMode}
                 state={state}
                 onDigitClick={handleDigitClick}
                 onModeChange={handleDigitModeChange}

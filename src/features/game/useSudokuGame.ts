@@ -161,7 +161,7 @@ export function useSudokuGame() {
       }
 
       if (event.key >= "1" && event.key <= "9") {
-        dispatch({ type: "inputDigit", digit: Number(event.key) as Digit });
+        dispatch({ type: "pressDigit", digit: Number(event.key) as Digit });
         event.preventDefault();
         return;
       }

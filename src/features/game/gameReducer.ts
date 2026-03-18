@@ -13,10 +13,11 @@ import {
 } from "../../domain/sudoku";
 import type { CellPosition, Difficulty, Digit } from "../../domain/sudoku";
 import type {
+  DigitMode,
+  FocusState,
   GameLoadPayload,
   GameState,
   HistorySnapshot,
-  InteractionMode,
   MessageState
 } from "./types";
 
@@ -27,13 +28,10 @@ type GameAction =
   | { type: "replaceState"; state: GameState }
   | { type: "tick" }
   | { type: "selectCell"; row: number; col: number }
-  | { type: "interactWithBoardCell"; row: number; col: number }
   | { type: "moveSelection"; deltaRow: number; deltaCol: number }
   | { type: "toggleNoteMode"; forceValue?: boolean }
-  | { type: "toggleSelectedDigit"; digit: Digit }
-  | { type: "toggleObserveDigit"; digit: Digit }
-  | { type: "clearSelectedDigit" }
-  | { type: "clearInteraction" }
+  | { type: "setDigitMode"; mode: DigitMode }
+  | { type: "pressDigit"; digit: Digit }
   | { type: "inputDigit"; digit: Digit; fromHint?: boolean }
   | { type: "eraseCell" }
   | { type: "requestHint" }
@@ -71,15 +69,80 @@ function findDefaultSelectedCell(
   return { row: 0, col: 0 };
 }
 
+function cloneFocus(focus: FocusState): FocusState {
+  return {
+    digitMode: focus.digitMode,
+    cell: focus.cell ? { ...focus.cell } : null,
+    selectedDigit: focus.selectedDigit,
+    observedDigit: focus.observedDigit
+  };
+}
+
+function normalizeFocusState(focus: FocusState): FocusState {
+  return {
+    digitMode: focus.digitMode,
+    cell: focus.cell ? { ...focus.cell } : null,
+    selectedDigit: focus.digitMode === "input" ? focus.selectedDigit : null,
+    observedDigit: focus.digitMode === "observe" ? focus.observedDigit : null
+  };
+}
+
+function createDefaultFocus(puzzle: GameLoadPayload["puzzle"], board: GameLoadPayload["puzzle"]): FocusState {
+  return {
+    digitMode: "input",
+    cell: findDefaultSelectedCell(puzzle, board),
+    selectedDigit: null,
+    observedDigit: null
+  };
+}
+
+function createFocusFromPayload(
+  payload: GameLoadPayload,
+  board: GameLoadPayload["puzzle"]
+): FocusState {
+  const fallback = createDefaultFocus(payload.puzzle, board);
+  const legacyDigitMode: DigitMode =
+    payload.interactionMode === "observe-digit" ? "observe" : "input";
+  const cell = payload.focus?.cell ?? payload.selected ?? payload.selectedCell ?? fallback.cell;
+
+  return normalizeFocusState({
+    digitMode: payload.focus?.digitMode ?? legacyDigitMode,
+    cell,
+    selectedDigit: payload.focus?.selectedDigit ?? payload.selectedDigit ?? null,
+    observedDigit: payload.focus?.observedDigit ?? payload.observedDigit ?? null
+  });
+}
+
+export function getExplicitFocusDigit(state: GameState): Digit | null {
+  return state.focus.digitMode === "observe" ? state.focus.observedDigit : state.focus.selectedDigit;
+}
+
+export function getFocusDigit(state: GameState): Digit | null {
+  const cell = state.focus.cell;
+  if (cell) {
+    const value = state.board[cell.row][cell.col];
+    if (value !== 0) {
+      return value as Digit;
+    }
+  }
+
+  return getExplicitFocusDigit(state);
+}
+
+export function getCandidateFocusDigit(state: GameState): Digit | null {
+  const cell = state.focus.cell;
+  if (cell && state.board[cell.row][cell.col] !== 0) {
+    return null;
+  }
+
+  return getExplicitFocusDigit(state);
+}
+
 function makeSnapshot(state: GameState): HistorySnapshot {
   return {
     board: cloneGrid(state.board),
     notes: cloneNotes(state.notes),
-    selected: state.selected ? { ...state.selected } : null,
-    selectedCell: state.selectedCell ? { ...state.selectedCell } : null,
-    interactionMode: state.interactionMode,
-    selectedDigit: state.selectedDigit,
-    observedDigit: state.observedDigit,
+    focus: cloneFocus(state.focus),
     lastChangedCell: state.lastChangedCell ? { ...state.lastChangedCell } : null,
     noteMode: state.noteMode,
     mistakes: state.mistakes,
@@ -92,11 +155,7 @@ function restoreSnapshot(state: GameState, snapshot: HistorySnapshot): GameState
     ...state,
     board: cloneGrid(snapshot.board),
     notes: cloneNotes(snapshot.notes),
-    selected: snapshot.selected ? { ...snapshot.selected } : null,
-    selectedCell: snapshot.selectedCell ? { ...snapshot.selectedCell } : null,
-    interactionMode: snapshot.interactionMode,
-    selectedDigit: snapshot.selectedDigit,
-    observedDigit: snapshot.observedDigit,
+    focus: cloneFocus(snapshot.focus),
     lastChangedCell: snapshot.lastChangedCell ? { ...snapshot.lastChangedCell } : null,
     noteMode: snapshot.noteMode,
     mistakes: snapshot.mistakes,
@@ -111,6 +170,7 @@ function pushHistory(state: GameState): GameState {
   if (history.length > HISTORY_LIMIT) {
     history.shift();
   }
+
   return {
     ...state,
     history,
@@ -128,120 +188,49 @@ function finalizeBoardState(nextState: GameState): GameState {
       message: createMessage(`完成！用时 ${formatTime(nextState.elapsedSeconds)}。`, "success")
     };
   }
+
   return nextState;
 }
 
-function clearInteractionState(
-  state: GameState,
-  options: {
-    selected?: CellPosition | null;
-    selectedDigit?: Digit | null;
-  } = {}
-): GameState {
-  return {
-    ...state,
-    selected: "selected" in options ? options.selected ?? null : state.selected,
-    selectedCell: null,
-    interactionMode: "none",
-    selectedDigit: "selectedDigit" in options ? options.selectedDigit ?? null : state.selectedDigit,
-    observedDigit: null
-  };
-}
-
-function setBoardSelectedState(state: GameState, row: number, col: number): GameState {
-  return {
-    ...state,
-    selected: { row, col },
-    selectedCell: { row, col },
-    interactionMode: "board-selected",
-    selectedDigit: null,
-    observedDigit: null
-  };
-}
-
-function updateCursorSelection(
-  state: GameState,
-  row: number,
-  col: number,
-  interactionMode: InteractionMode = state.interactionMode
-): GameState {
-  if (interactionMode === "observe-digit") {
-    return {
-      ...state,
-      selected: { row, col },
-      selectedCell: null
-    };
+function setDigitModeState(state: GameState, mode: DigitMode): GameState {
+  if (state.focus.digitMode === mode) {
+    return state;
   }
 
-  const value = state.board[row][col];
-  if (value !== 0) {
-    return setBoardSelectedState(state, row, col);
-  }
-
-  return clearInteractionState(state, {
-    selected: { row, col },
-    selectedDigit: state.interactionMode === "observe-digit" ? null : state.selectedDigit
-  });
+  return {
+    ...state,
+    focus: normalizeFocusState({
+      ...state.focus,
+      digitMode: mode,
+      selectedDigit: mode === "observe" ? null : state.focus.selectedDigit,
+      observedDigit: mode === "input" ? null : state.focus.observedDigit
+    })
+  };
 }
 
 function selectCellState(state: GameState, row: number, col: number): GameState {
-  const value = state.board[row][col];
-
-  if (value !== 0) {
-    const sameBoardSelected =
-      state.interactionMode === "board-selected" &&
-      state.selectedCell?.row === row &&
-      state.selectedCell?.col === col;
-
-    if (sameBoardSelected) {
-      return clearInteractionState(state, {
-        selected: null,
-        selectedDigit: null
-      });
-    }
-
-    return setBoardSelectedState(state, row, col);
-  }
-
-  if (state.interactionMode === "observe-digit") {
-    return {
-      ...state,
-      selected: { row, col }
-    };
-  }
-
-  return clearInteractionState(state, {
-    selected: { row, col },
-    selectedDigit: state.selectedDigit
-  });
-}
-
-function toggleObserveDigitState(state: GameState, digit: Digit): GameState {
-  if (state.interactionMode === "observe-digit" && state.observedDigit === digit) {
-    return clearInteractionState(state, {
-      selectedDigit: null
-    });
-  }
-
   return {
     ...state,
-    selectedCell: null,
-    interactionMode: "observe-digit",
-    selectedDigit: null,
-    observedDigit: digit
+    focus: normalizeFocusState({
+      ...state.focus,
+      cell: { row, col }
+    })
   };
 }
 
 function applyDigitPlacement(state: GameState, digit: Digit, fromHint: boolean): GameState {
-  if (!state.selected) {
-    return fromHint
-      ? state
-      : clearInteractionState(state, {
-          selectedDigit: digit
-        });
+  const cell = state.focus.cell;
+  if (!cell) {
+    return {
+      ...state,
+      focus: normalizeFocusState({
+        ...state.focus,
+        selectedDigit: state.focus.selectedDigit === digit ? null : digit
+      })
+    };
   }
 
-  const { row, col } = state.selected;
+  const { row, col } = cell;
   if (state.fixed[row][col]) {
     return fromHint
       ? state
@@ -262,14 +251,14 @@ function applyDigitPlacement(state: GameState, digit: Digit, fromHint: boolean):
     const withHistory = pushHistory(state);
     const notes = cloneNotes(withHistory.notes);
     toggleNote(notes, row, col, digit);
+
     return {
       ...withHistory,
       notes,
-      selected: { row, col },
-      selectedCell: null,
-      interactionMode: "none",
-      selectedDigit: digit,
-      observedDigit: null,
+      focus: normalizeFocusState({
+        ...withHistory.focus,
+        selectedDigit: digit
+      }),
       lastChangedCell: { row, col },
       pendingHint: null,
       message: createMessage(`已切换 ${digit} 的笔记。`)
@@ -278,7 +267,14 @@ function applyDigitPlacement(state: GameState, digit: Digit, fromHint: boolean):
 
   if (state.board[row][col] === digit && !fromHint) {
     return {
-      ...setBoardSelectedState(state, row, col),
+      ...state,
+      focus:
+        state.focus.digitMode === "input"
+          ? normalizeFocusState({
+              ...state.focus,
+              selectedDigit: digit
+            })
+          : cloneFocus(state.focus),
       message: createMessage(`当前格已经是 ${digit}。`)
     };
   }
@@ -294,11 +290,13 @@ function applyDigitPlacement(state: GameState, digit: Digit, fromHint: boolean):
     ...withHistory,
     board,
     notes,
-    selected: { row, col },
-    selectedCell: { row, col },
-    interactionMode: "board-selected",
-    selectedDigit: null,
-    observedDigit: null,
+    focus:
+      withHistory.focus.digitMode === "input"
+        ? normalizeFocusState({
+            ...withHistory.focus,
+            selectedDigit: digit
+          })
+        : cloneFocus(withHistory.focus),
     lastChangedCell: { row, col },
     pendingHint: null,
     showValidation: false,
@@ -310,11 +308,12 @@ function applyDigitPlacement(state: GameState, digit: Digit, fromHint: boolean):
 }
 
 function eraseSelectedCell(state: GameState): GameState {
-  if (!state.selected) {
+  const cell = state.focus.cell;
+  if (!cell) {
     return state;
   }
 
-  const { row, col } = state.selected;
+  const { row, col } = cell;
   if (state.fixed[row][col]) {
     return {
       ...state,
@@ -336,17 +335,27 @@ function eraseSelectedCell(state: GameState): GameState {
     ...withHistory,
     board,
     notes,
-    selected: { row, col },
-    selectedCell: null,
-    interactionMode: "none",
-    selectedDigit: null,
-    observedDigit: null,
+    focus: cloneFocus(withHistory.focus),
     lastChangedCell: { row, col },
     pendingHint: null,
     showValidation: false,
     status: "playing",
     message: createMessage("已擦除当前格。")
   };
+}
+
+function pressDigitState(state: GameState, digit: Digit): GameState {
+  if (state.focus.digitMode === "observe") {
+    return {
+      ...state,
+      focus: normalizeFocusState({
+        ...state.focus,
+        observedDigit: state.focus.observedDigit === digit ? null : digit
+      })
+    };
+  }
+
+  return applyDigitPlacement(state, digit, false);
 }
 
 export function formatTime(totalSeconds: number): string {
@@ -370,11 +379,12 @@ export function createInitialGameState(): GameState {
     board: makeGrid(0),
     fixed: makeBoolGrid(false),
     notes: makeNoteGrid(),
-    selected: null,
-    selectedCell: null,
-    interactionMode: "none",
-    selectedDigit: null,
-    observedDigit: null,
+    focus: {
+      digitMode: "input",
+      cell: null,
+      selectedDigit: null,
+      observedDigit: null
+    },
     lastChangedCell: null,
     pendingHint: null,
     noteMode: false,
@@ -394,10 +404,6 @@ export function createInitialGameState(): GameState {
 export function createGameStateFromPayload(payload: GameLoadPayload): GameState {
   const board = payload.board ? cloneGrid(payload.board) : cloneGrid(payload.puzzle);
   const notes = payload.notes ? cloneNotes(payload.notes) : makeNoteGrid();
-  const interactionMode = payload.interactionMode ?? "none";
-  const fallbackSelected = payload.selectedCell ?? payload.selected ?? findDefaultSelectedCell(payload.puzzle, board);
-  const selected = interactionMode === "board-selected" ? fallbackSelected : (payload.selected ?? fallbackSelected);
-  const selectedCell = interactionMode === "board-selected" ? payload.selectedCell ?? selected : null;
 
   return {
     difficulty: payload.difficulty,
@@ -407,11 +413,7 @@ export function createGameStateFromPayload(payload: GameLoadPayload): GameState 
     board,
     fixed: deriveFixedGrid(payload.puzzle),
     notes,
-    selected: selected ? { ...selected } : null,
-    selectedCell: selectedCell ? { ...selectedCell } : null,
-    interactionMode,
-    selectedDigit: interactionMode === "none" ? payload.selectedDigit ?? null : null,
-    observedDigit: interactionMode === "observe-digit" ? payload.observedDigit ?? null : null,
+    focus: createFocusFromPayload(payload, board),
     lastChangedCell: payload.lastChangedCell ?? null,
     pendingHint: null,
     noteMode: payload.noteMode ?? false,
@@ -453,6 +455,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (state.status !== "playing" || state.generating) {
         return state;
       }
+
       return {
         ...state,
         elapsedSeconds: state.elapsedSeconds + 1
@@ -461,14 +464,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "selectCell":
       return selectCellState(state, action.row, action.col);
 
-    case "interactWithBoardCell":
-      return selectCellState(state, action.row, action.col);
-
     case "moveSelection": {
-      const current = state.selected ?? state.selectedCell ?? { row: 0, col: 0 };
+      const current = state.focus.cell ?? { row: 0, col: 0 };
       const row = (current.row + action.deltaRow + 9) % 9;
       const col = (current.col + action.deltaCol + 9) % 9;
-      return updateCursorSelection(state, row, col);
+      return selectCellState(state, row, col);
     }
 
     case "toggleNoteMode":
@@ -478,24 +478,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         message: createMessage((action.forceValue ?? !state.noteMode) ? "笔记模式已开启。" : "笔记模式已关闭。")
       };
 
-    case "toggleSelectedDigit":
-      return clearInteractionState(state, {
-        selectedDigit: state.selectedDigit === action.digit ? null : action.digit
-      });
+    case "setDigitMode":
+      return setDigitModeState(state, action.mode);
 
-    case "toggleObserveDigit":
-      return toggleObserveDigitState(state, action.digit);
-
-    case "clearSelectedDigit":
-      return clearInteractionState(state, {
-        selectedDigit: null
-      });
-
-    case "clearInteraction":
-      return clearInteractionState(state, {
-        selected: state.interactionMode === "board-selected" ? null : state.selected,
-        selectedDigit: null
-      });
+    case "pressDigit":
+      return pressDigitState(state, action.digit);
 
     case "inputDigit":
       return applyDigitPlacement(state, action.digit, action.fromHint === true);
@@ -522,11 +509,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         pendingHint: hint,
-        selected: { row: hint.row, col: hint.col },
-        selectedCell: null,
-        interactionMode: "none",
-        selectedDigit: hint.value,
-        observedDigit: null,
+        focus: normalizeFocusState({
+          digitMode: "input",
+          cell: { row: hint.row, col: hint.col },
+          selectedDigit: hint.value,
+          observedDigit: null
+        }),
         noteMode: false,
         message: createMessage(`${hint.technique} 已准备好。先看解释，再决定是否应用。`)
       };
@@ -568,11 +556,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           message: createMessage("没有可撤销的操作。")
         };
       }
+
       const history = [...state.history];
       const previous = history.pop();
       if (!previous) {
         return state;
       }
+
       const restored = restoreSnapshot(
         {
           ...state,
@@ -581,6 +571,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         },
         previous
       );
+
       return {
         ...restored,
         message: createMessage("已撤销一步。")
@@ -594,11 +585,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           message: createMessage("没有可重做的操作。")
         };
       }
+
       const future = [...state.future];
       const next = future.pop();
       if (!next) {
         return state;
       }
+
       const restored = restoreSnapshot(
         {
           ...state,
@@ -607,6 +600,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         },
         next
       );
+
       return {
         ...restored,
         message: createMessage("已重做一步。")
@@ -628,14 +622,14 @@ export function describeSelectedCell(state: GameState): {
   title: string;
   summary: string;
 } {
-  if (!state.selected) {
+  if (!state.focus.cell) {
     return {
       title: "未选中",
       summary: "选中一个格子。"
     };
   }
 
-  const { row, col } = state.selected;
+  const { row, col } = state.focus.cell;
   const value = state.board[row][col];
   const fixed = state.fixed[row][col];
   const label = `R${row + 1}C${col + 1}`;
