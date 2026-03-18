@@ -149,17 +149,10 @@ function applyDigitPlacement(state: GameState, digit: Digit, fromHint: boolean):
     };
   }
 
-  if (state.board[row][col] !== 0 && !fromHint) {
-    if (state.board[row][col] === digit) {
-      return {
-        ...state,
-        message: createMessage(`当前格已经是 ${digit}。`)
-      };
-    }
-
+  if (state.board[row][col] === digit && !fromHint) {
     return {
       ...state,
-      message: createMessage("请先擦除当前格，再重新填入。", "warn")
+      message: createMessage(`当前格已经是 ${digit}。`)
     };
   }
 
@@ -516,7 +509,7 @@ export function describeSelectedCell(state: GameState): {
   if (value !== 0) {
     return {
       title: `${label} 已填`,
-      summary: `当前填入 ${value}。如需修改，请先擦除。`
+      summary: `当前填入 ${value}。`
     };
   }
 

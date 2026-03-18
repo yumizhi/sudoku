@@ -27,16 +27,16 @@ function makeState() {
 }
 
 describe("gameReducer", () => {
-  it("does not overwrite a filled editable cell without erasing first", () => {
+  it("allows overwriting a filled editable cell directly", () => {
     let state = makeState();
 
     state = gameReducer(state, { type: "inputDigit", digit: 1 });
     expect(state.board[0][0]).toBe(1);
 
     const next = gameReducer(state, { type: "inputDigit", digit: 3 });
-    expect(next.board[0][0]).toBe(1);
-    expect(next.message.text).toContain("先擦除");
-    expect(next.history).toHaveLength(1);
+    expect(next.board[0][0]).toBe(3);
+    expect(next.message.text).toBe("已填入 3。");
+    expect(next.history).toHaveLength(2);
   });
 
   it("keeps fill feedback neutral even when the number is wrong", () => {

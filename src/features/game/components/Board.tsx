@@ -83,7 +83,7 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
   }, [selected]);
 
   return (
-    <div className="board-grid mx-auto w-full max-w-[42rem] rounded-[2rem] border border-slate-300/80 bg-slate-300 p-[6px] shadow-board lg:max-w-[min(42rem,calc(100dvh-8rem))]">
+    <div className="board-grid mx-auto w-full max-w-[42rem] rounded-[2rem] border border-slate-300/80 bg-slate-300 p-[6px] shadow-board lg:max-w-[min(42rem,calc(100dvh-11rem))]">
       <div
         role="grid"
         aria-label="Sudoku 棋盘"
@@ -129,13 +129,17 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
               "relative grid aspect-square place-items-center border border-slate-300 bg-white text-[clamp(1rem,2.2vw,1.65rem)] font-bold leading-none text-slate-800 transition-colors duration-150 focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/60",
               isFixed ? "bg-stone-100 text-slate-900" : "text-tide",
               isRelated ? "bg-tide/10" : "",
-              isBlockedByObservedLine ? "bg-slate-100" : "",
-              isSelected ? "bg-tide/20 ring-2 ring-inset ring-tide/60" : "",
+              isBlockedByObservedLine
+                ? "bg-amber-100 ring-1 ring-inset ring-amber-200"
+                : "",
+              candidateMatch
+                ? "bg-emerald-100 ring-1 ring-inset ring-emerald-300"
+                : "",
+              isDigitMatch ? "bg-sky-100 ring-1 ring-inset ring-sky-300 text-slate-900" : "",
               isSameValue ? "bg-brass/20" : "",
               isConflict ? "bg-ember/20 text-ember" : "",
               !isConflict && isMistake ? "bg-ember/10 text-ember" : "",
-              isDigitMatch ? "bg-tide/20" : "",
-              candidateMatch ? "bg-pine/10" : "",
+              isSelected ? "ring-2 ring-inset ring-tide/70" : "",
               hasLocalDigitPreview && isSelected ? "bg-pine/10" : ""
             ]
               .filter(Boolean)

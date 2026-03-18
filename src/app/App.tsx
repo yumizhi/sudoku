@@ -56,7 +56,7 @@ export default function App(): JSX.Element {
       <main className="relative mx-auto min-h-dvh w-full max-w-7xl px-3 py-3 sm:px-4 lg:h-dvh lg:min-h-0 lg:overflow-hidden lg:px-5 lg:py-4">
         <div className="grid gap-3 lg:h-full lg:grid-cols-[minmax(0,1fr),minmax(20rem,23rem)] lg:gap-4">
           <section className="panel-surface flex min-h-0 flex-col p-3 sm:p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-display text-xl text-slate-900 sm:text-2xl">数独</h1>
                 <span className="soft-chip">
@@ -64,6 +64,7 @@ export default function App(): JSX.Element {
                     ? tutorial.technique
                     : DIFFICULTY_CONFIG[state.difficulty].label}
                 </span>
+                <span className="soft-chip">{detail.title}</span>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -77,6 +78,16 @@ export default function App(): JSX.Element {
               </div>
             </div>
 
+            <div
+              className={[
+                "mt-3 rounded-[1.1rem] border px-3 py-2 text-sm font-medium shadow-sm",
+                messageToneClass
+              ].join(" ")}
+              aria-live="polite"
+            >
+              {state.message.text || " "}
+            </div>
+
             <div className="flex min-h-0 flex-1 items-center justify-center">
               <Board
                 state={state}
@@ -85,7 +96,7 @@ export default function App(): JSX.Element {
             </div>
           </section>
 
-          <aside className="panel-surface flex min-h-0 flex-col gap-3 p-3 sm:p-4 lg:overflow-y-auto">
+          <aside className="panel-surface flex min-h-0 flex-col gap-3 p-3 sm:p-4 lg:max-h-full lg:overflow-y-auto">
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="grid gap-1.5 sm:col-span-2">
                 <span className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-slate-500">
@@ -193,24 +204,7 @@ export default function App(): JSX.Element {
               </button>
             </div>
 
-            <div
-              className={["rounded-[1.1rem] border px-3 py-2 text-sm font-medium shadow-sm", messageToneClass].join(" ")}
-              aria-live="polite"
-            >
-              {state.message.text || " "}
-            </div>
-
-            <div className="rounded-[1.2rem] border border-slate-200 bg-white/75 px-3 py-2.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-slate-500">
-                  当前格
-                </p>
-                <span className="text-xs font-semibold text-slate-500">{detail.title}</span>
-              </div>
-              <p className="mt-1 text-sm leading-5 text-slate-600">{detail.summary}</p>
-            </div>
-
-            <div className="min-h-0 rounded-[1.5rem] border border-slate-200 bg-white/80 p-3">
+            <div className="shrink-0 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white/80 p-3">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
                   <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-slate-500">

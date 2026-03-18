@@ -26,7 +26,7 @@ export function DigitPad({
   }
 
   return (
-    <div className="grid h-full gap-3">
+    <div className="grid gap-3">
       <div className="grid grid-cols-2 gap-2 rounded-[1.2rem] border border-slate-200 bg-slate-50 p-1.5">
         <button
           type="button"
