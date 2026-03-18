@@ -83,7 +83,7 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
   }, [selected]);
 
   return (
-    <div className="board-grid mx-auto w-full max-w-[42rem] rounded-[2rem] border border-slate-300/80 bg-slate-300 p-[6px] shadow-board">
+    <div className="board-grid mx-auto w-full max-w-[42rem] rounded-[2rem] border border-slate-300/80 bg-slate-300 p-[6px] shadow-board lg:max-w-[min(42rem,calc(100dvh-8rem))]">
       <div
         role="grid"
         aria-label="Sudoku 棋盘"

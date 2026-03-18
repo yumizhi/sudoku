@@ -28,14 +28,14 @@ export function TutorialPickerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 px-4 py-6 backdrop-blur-sm"
+      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 px-4 py-6 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="tutorial-picker-title"
-        className="panel-surface w-full max-w-3xl p-6 sm:p-8"
+        className="panel-surface max-h-[min(90dvh,48rem)] w-full max-w-3xl overflow-y-auto p-6 sm:p-8"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
