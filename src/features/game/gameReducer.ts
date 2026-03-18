@@ -6,7 +6,6 @@ import {
   deriveFixedGrid,
   evaluateBoard,
   findHint,
-  getCandidates,
   makeBoolGrid,
   makeGrid,
   makeNoteGrid,
@@ -524,9 +523,6 @@ export function describeSelectedCell(state: GameState): {
   return {
     title: `${label} 空格`,
     summary: "空格。"
-        ? `只剩候选 ${candidates[0]}。`
-        : `当前还有 ${candidates.length} 个候选。`,
-    candidates
   };
 }
 

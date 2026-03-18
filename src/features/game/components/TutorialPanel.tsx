@@ -26,7 +26,7 @@ export function TutorialPanel({
     }
   }, [open]);
 
-  if (!level || !open) {
+  if (!open || !level) {
     return null;
   }
 
@@ -45,12 +45,20 @@ export function TutorialPanel({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">教程</p>
-            <h2 id="tutorial-guide-title" className="mt-1 font-display text-2xl text-slate-900 sm:text-3xl">
+            <h2
+              id="tutorial-guide-title"
+              className="mt-1 font-display text-2xl text-slate-900 sm:text-3xl"
+            >
               {level.title}
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">{level.objective}</p>
           </div>
-          <button ref={closeButtonRef} type="button" className="secondary-action" onClick={onClose}>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            className="secondary-action"
+            onClick={onClose}
+          >
             关闭
           </button>
         </div>
@@ -61,6 +69,7 @@ export function TutorialPanel({
             教程模式
           </span>
         </div>
+
         <div className="mt-5 rounded-[1.35rem] border border-slate-200 bg-white/80 p-4">
           <p className="text-sm leading-6 text-slate-700">{level.summary}</p>
           <div className="mt-4 grid gap-3">
@@ -72,9 +81,16 @@ export function TutorialPanel({
                 <p className="text-sm leading-6 text-slate-600">{step}</p>
               </div>
             ))}
+          </div>
         </div>
+
         <div className="mt-5 grid gap-2 sm:grid-cols-3">
-          <button type="button" className="secondary-action" disabled={state.generating} onClick={onOpenTutorialMenu}>
+          <button
+            type="button"
+            className="secondary-action"
+            disabled={state.generating}
+            onClick={onOpenTutorialMenu}
+          >
             切换关卡
           </button>
           <button
@@ -91,9 +107,5 @@ export function TutorialPanel({
         </div>
       </section>
     </div>
-          重新开始
-        </button>
-      </div>
-    </section>
   );
 }
