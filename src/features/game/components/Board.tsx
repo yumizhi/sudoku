@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import {
+  boxStart,
   calculateConflicts,
   getCandidates,
   isPeer,
@@ -54,6 +55,21 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
     selectedValue === 0;
   const hasGlobalDigitFocus = hasDigitFocus && state.focusScope === "global";
   const hasCellLineFocus = !hasDigitFocus && selectedValue !== 0;
+  const occupiedRows = new Set<number>();
+  const occupiedCols = new Set<number>();
+  const occupiedBoxes = new Set<string>();
+
+  if (hasGlobalDigitFocus && state.focusDigit !== null) {
+    for (let row = 0; row < 9; row += 1) {
+      for (let col = 0; col < 9; col += 1) {
+        if (state.board[row][col] === state.focusDigit) {
+          occupiedRows.add(row);
+          occupiedCols.add(col);
+          occupiedBoxes.add(`${boxStart(row)}-${boxStart(col)}`);
+        }
+      }
+    }
+  }
 
   useEffect(() => {
     if (!selected) {
@@ -93,6 +109,13 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
               value === 0 &&
               state.focusDigit !== null &&
               getCandidates(state.board, row, col).includes(state.focusDigit);
+            const isBlockedByObservedLine =
+              hasGlobalDigitFocus &&
+              value === 0 &&
+              !candidateMatch &&
+              (occupiedRows.has(row) ||
+                occupiedCols.has(col) ||
+                occupiedBoxes.has(`${boxStart(row)}-${boxStart(col)}`));
             const isDigitMatch =
               (hasLocalDigitPreview &&
                 selected !== null &&
@@ -106,6 +129,7 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
               "relative grid aspect-square place-items-center border border-slate-300 bg-white text-[clamp(1rem,2.2vw,1.65rem)] font-bold leading-none text-slate-800 transition-colors duration-150 focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/60",
               isFixed ? "bg-stone-100 text-slate-900" : "text-tide",
               isRelated ? "bg-tide/10" : "",
+              isBlockedByObservedLine ? "bg-slate-100" : "",
               isSelected ? "bg-tide/20 ring-2 ring-inset ring-tide/60" : "",
               isSameValue ? "bg-brass/20" : "",
               isConflict ? "bg-ember/20 text-ember" : "",

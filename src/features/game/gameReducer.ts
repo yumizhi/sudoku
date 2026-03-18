@@ -24,8 +24,8 @@ type GameAction =
   | { type: "selectCell"; row: number; col: number }
   | { type: "moveSelection"; deltaRow: number; deltaCol: number }
   | { type: "toggleNoteMode"; forceValue?: boolean }
+  | { type: "clearFocus" }
   | { type: "toggleGlobalInspect"; digit: Digit }
-  | { type: "toggleLocalInspect"; digit: Digit }
   | { type: "inputDigit"; digit: Digit; fromHint?: boolean }
   | { type: "eraseCell" }
   | { type: "requestHint" }
@@ -171,28 +171,19 @@ function applyDigitPlacement(state: GameState, digit: Digit, fromHint: boolean):
   notes[row][col] = [];
   clearPeerNotes(notes, row, col, digit);
 
-  const mistakes = !fromHint && withHistory.solution[row][col] !== digit
-    ? withHistory.mistakes + 1
-    : withHistory.mistakes;
-
   const updated = finalizeBoardState({
     ...withHistory,
     board,
     notes,
-    focusDigit: null,
-    focusScope: null,
+    focusDigit: withHistory.focusScope === "global" ? withHistory.focusDigit : null,
+    focusScope: withHistory.focusScope === "global" ? withHistory.focusScope : null,
     pendingHint: null,
     showValidation: false,
     status: "playing",
-    mistakes,
+    mistakes: withHistory.mistakes,
     message: fromHint
       ? createMessage(`已应用提示：R${row + 1}C${col + 1} = ${digit}。`)
-      : createMessage(
-          withHistory.solution[row][col] === digit
-            ? `已填入 ${digit}。`
-            : `已填入 ${digit}，这个位置暂时不正确。`,
-          withHistory.solution[row][col] === digit ? "info" : "warn"
-        )
+      : createMessage(`已填入 ${digit}。`)
   });
 
   return updated;
@@ -225,8 +216,8 @@ function eraseSelectedCell(state: GameState): GameState {
     ...withHistory,
     board,
     notes,
-    focusDigit: null,
-    focusScope: null,
+    focusDigit: withHistory.focusScope === "global" ? withHistory.focusDigit : null,
+    focusScope: withHistory.focusScope === "global" ? withHistory.focusScope : null,
     pendingHint: null,
     showValidation: false,
     status: "playing",
@@ -338,8 +329,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         selected: { row: action.row, col: action.col },
-        focusDigit: null,
-        focusScope: null
+        focusDigit: state.focusScope === "global" ? state.focusDigit : null,
+        focusScope: state.focusScope === "global" ? state.focusScope : null
       };
 
     case "moveSelection": {
@@ -349,8 +340,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         selected: { row, col },
-        focusDigit: null,
-        focusScope: null
+        focusDigit: state.focusScope === "global" ? state.focusDigit : null,
+        focusScope: state.focusScope === "global" ? state.focusScope : null
       };
     }
 
@@ -361,21 +352,18 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         message: createMessage((action.forceValue ?? !state.noteMode) ? "笔记模式已开启。" : "笔记模式已关闭。")
       };
 
+    case "clearFocus":
+      return {
+        ...state,
+        focusDigit: null,
+        focusScope: null
+      };
+
     case "toggleGlobalInspect":
       return {
         ...state,
         focusDigit: state.focusScope === "global" && state.focusDigit === action.digit ? null : action.digit,
         focusScope: state.focusScope === "global" && state.focusDigit === action.digit ? null : "global"
-      };
-
-    case "toggleLocalInspect":
-      if (!state.selected) {
-        return state;
-      }
-      return {
-        ...state,
-        focusDigit: state.focusScope === "local" && state.focusDigit === action.digit ? null : action.digit,
-        focusScope: state.focusScope === "local" && state.focusDigit === action.digit ? null : "local"
       };
 
     case "inputDigit":
@@ -389,16 +377,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         return {
           ...state,
           message: createMessage("本局已完成，可以直接开始新的一局。", "success")
-        };
-      }
-
-      const evaluation = evaluateBoard(state.board, state.solution);
-      if (evaluation.wrong > 0 || evaluation.conflicts.size > 0) {
-        return {
-          ...state,
-          pendingHint: null,
-          showValidation: true,
-          message: createMessage("当前有错误或冲突，先修正后再请求提示。", "warn")
         };
       }
 

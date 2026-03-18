@@ -9,5 +9,5 @@ test("renders the game shell and supports basic input flow", async ({ page }) =>
   await expect(page.locator('[role="gridcell"]')).toHaveCount(81);
 
   await page.getByRole("button", { name: /^1/ }).first().click();
-  await expect(page.getByText(/已填入|这个位置暂时不正确/)).toBeVisible();
+  await expect(page.getByText("已填入 1。")).toBeVisible();
 });

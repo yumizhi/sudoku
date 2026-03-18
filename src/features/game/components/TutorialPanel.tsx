@@ -1,42 +1,39 @@
-import { TUTORIAL_LEVELS, getTutorialById } from "../../../domain/sudoku";
+import { getTutorialById } from "../../../domain/sudoku";
 import type { GameState } from "../types";
 
 interface TutorialPanelProps {
   state: GameState;
-  onStartTutorial: (id: string) => void;
+  onOpenTutorialMenu: () => void;
+  onRestartTutorial: (id: string) => void;
 }
 
-const DEFAULT_STEPS = [
-  "先选中空格，再输入数字或切到笔记模式。",
-  "需要扫整盘时，用“全局观察”查看单个数字。",
-  "需要帮助时先看提示解释，再决定是否应用。"
-];
-
-export function TutorialPanel({ state, onStartTutorial }: TutorialPanelProps): JSX.Element {
+export function TutorialPanel({
+  state,
+  onOpenTutorialMenu,
+  onRestartTutorial
+}: TutorialPanelProps): JSX.Element | null {
   const level = getTutorialById(state.tutorialId);
-  const steps = state.mode === "tutorial" && level ? level.steps : DEFAULT_STEPS;
+
+  if (!level) {
+    return null;
+  }
 
   return (
-    <section className="panel-surface flex flex-col gap-5 p-5">
+    <section className="panel-surface flex flex-col gap-4 p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">教程</p>
-          <h2 className="mt-2 font-display text-2xl text-slate-900">
-            {level ? level.title : "训练关卡"}
-          </h2>
+          <h2 className="mt-2 font-display text-2xl text-slate-900">{level.title}</h2>
         </div>
-        <span className="soft-chip">{level ? level.technique : "可选"}</span>
+        <span className="soft-chip">{level.technique}</span>
       </div>
 
-      <p className="text-sm leading-6 text-slate-600">
-        {level
-          ? `${level.objective} ${level.summary}`
-          : "当前是自由对局。也可以直接开始下方训练关卡。"}
-      </p>
+      <p className="text-sm leading-6 text-slate-600">{level.objective}</p>
+      <p className="text-sm leading-6 text-slate-600">{level.summary}</p>
 
       <div className="grid gap-3">
-        {steps.map((step, index) => (
-          <div key={`${index}-${step}`} className="grid grid-cols-[1.8rem,minmax(0,1fr)] gap-3">
+        {level.steps.map((step, index) => (
+          <div key={`${index}-${step}`} className="grid grid-cols-[1.75rem,minmax(0,1fr)] gap-3">
             <span className="grid h-7 w-7 place-items-center rounded-full bg-tide/10 text-xs font-black text-tide">
               {index + 1}
             </span>
@@ -45,37 +42,23 @@ export function TutorialPanel({ state, onStartTutorial }: TutorialPanelProps): J
         ))}
       </div>
 
-      <div className="grid gap-3">
-        {TUTORIAL_LEVELS.map((item) => {
-          const active = item.id === state.tutorialId;
-          return (
-            <article
-              key={item.id}
-              className={[
-                "rounded-[1.45rem] border p-4 transition",
-                active
-                  ? "border-tide/30 bg-tide/10 shadow-sm"
-                  : "border-slate-200 bg-white/70 hover:border-tide/20 hover:bg-white/90"
-              ].join(" ")}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-slate-900">{item.title}</h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">{item.summary}</p>
-                </div>
-                <span className="soft-chip">{item.technique}</span>
-              </div>
-              <button
-                type="button"
-                className="mt-4 inline-flex rounded-full border border-tide/20 bg-white px-4 py-2 text-sm font-bold text-tide transition hover:-translate-y-0.5 hover:border-tide/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
-                disabled={state.generating}
-                onClick={() => onStartTutorial(item.id)}
-              >
-                {active ? "重新开始" : "开始训练"}
-              </button>
-            </article>
-          );
-        })}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          className="secondary-action"
+          disabled={state.generating}
+          onClick={onOpenTutorialMenu}
+        >
+          关卡列表
+        </button>
+        <button
+          type="button"
+          className="secondary-action"
+          disabled={state.generating}
+          onClick={() => onRestartTutorial(level.id)}
+        >
+          重新开始
+        </button>
       </div>
     </section>
   );
