@@ -1,22 +1,14 @@
+import { DIGITS } from "../../../domain/sudoku";
 import type { Digit } from "../../../domain/sudoku";
 import type { GameState } from "../types";
-import { EyeIcon, NoteIcon } from "./icons";
 
 interface DigitPadProps {
-  activeDigit: Digit | null;
-  mode: "input" | "observe";
   state: GameState;
   onDigitClick: (digit: Digit) => void;
-  onModeChange: (mode: "input" | "observe") => void;
+  onClear: () => void;
 }
 
-export function DigitPad({
-  activeDigit,
-  mode,
-  state,
-  onDigitClick,
-  onModeChange
-}: DigitPadProps): JSX.Element {
+export function DigitPad({ state, onDigitClick, onClear }: DigitPadProps): JSX.Element {
   const counts = Array.from({ length: 10 }, () => 0);
   for (const row of state.board) {
     for (const value of row) {
@@ -26,84 +18,42 @@ export function DigitPad({
     }
   }
 
-  function renderDigitButton(digit: Digit, mobile: boolean): JSX.Element {
-    const saturated = counts[digit] >= 9;
-    const active = activeDigit === digit;
-    const icon = mode === "observe" ? <EyeIcon className="h-4 w-4" /> : <NoteIcon className="h-4 w-4" />;
-
-    return (
-      <button
-        key={`${mobile ? "mobile" : "desktop"}-${digit}`}
-        type="button"
-        className={[
-          "group rounded-[1rem] border text-center shadow-sm transition duration-150 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0",
-          mobile
-            ? "min-w-[4.75rem] shrink-0 px-3 py-2.5"
-            : "px-2 py-2.5 sm:px-2.5 sm:py-3",
-          active
-            ? "border-[#2489f0] bg-[#2489f0] text-white shadow-lg shadow-sky-200"
-            : saturated
-              ? "border-slate-300 bg-slate-100 text-slate-700"
-              : "border-slate-200 bg-white/85 text-slate-900 hover:border-tide/25 hover:bg-tide/5"
-        ].join(" ")}
-        disabled={state.generating}
-        onClick={() => onDigitClick(digit)}
-      >
-        <div
-          className={[
-            "mx-auto flex items-center justify-center",
-            active ? "text-white/95" : "text-slate-400"
-          ].join(" ")}
-        >
-          {icon}
-        </div>
-        <div className={mobile ? "mt-2 text-[2rem] font-black leading-none" : "mt-1 text-[1.2rem] font-black leading-none sm:text-[1.4rem]"}>
-          {digit}
-        </div>
-        <div
-          className={[
-            "mt-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em]",
-            active ? "text-white/80" : "text-slate-500"
-          ].join(" ")}
-        >
-          {counts[digit]}
-        </div>
-      </button>
-    );
-  }
-
   return (
-    <div className="grid gap-3">
-      <div className="grid grid-cols-2 gap-2 rounded-[1.2rem] border border-slate-200 bg-slate-50 p-1.5">
-        <button
-          type="button"
-          className={[
-            "rounded-[0.95rem] px-3 py-2 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50",
-            mode === "input" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
-          ].join(" ")}
-          onClick={() => onModeChange("input")}
-        >
-          填入
-        </button>
-        <button
-          type="button"
-          className={[
-            "rounded-[0.95rem] px-3 py-2 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tide/50",
-            mode === "observe" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
-          ].join(" ")}
-          onClick={() => onModeChange("observe")}
-        >
-          观察
-        </button>
+    <div className="grid gap-2.5">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-3 xl:grid-cols-5">
+        {DIGITS.map((digit) => {
+          const complete = counts[digit] >= 9;
+          return (
+            <button
+              key={digit}
+              type="button"
+              className={[
+                "rounded-2xl border px-3 py-3 text-center transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/70",
+                complete
+                  ? "border-slate-300 bg-slate-100 text-slate-500"
+                  : "border-slate-200 bg-white text-slate-900 shadow-sm hover:border-sky-200 hover:bg-sky-50"
+              ].join(" ")}
+              disabled={state.generating}
+              aria-label={`输入数字 ${digit}`}
+              onClick={() => onDigitClick(digit)}
+            >
+              <div className="text-[1.55rem] font-bold leading-none sm:text-[1.7rem]">{digit}</div>
+              <div className="mt-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                {counts[digit]}/9
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:hidden">
-        {Array.from({ length: 9 }, (_, index) => renderDigitButton((index + 1) as Digit, true))}
-      </div>
-
-      <div className="hidden grid-cols-3 gap-2 sm:gap-2.5 lg:grid">
-        {Array.from({ length: 9 }, (_, index) => renderDigitButton((index + 1) as Digit, false))}
-      </div>
+      <button
+        type="button"
+        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-sky-200 hover:bg-sky-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/70"
+        disabled={state.generating}
+        onClick={onClear}
+      >
+        清除当前格
+      </button>
     </div>
   );
 }
