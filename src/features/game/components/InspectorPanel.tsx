@@ -25,7 +25,7 @@ export function InspectorPanel({
           <h2 className="mt-2 font-display text-2xl text-slate-900">{detail.title}</h2>
         </div>
         <span className="soft-chip">
-          {state.noteMode ? "笔记模式" : state.mode === "tutorial" ? "教程模式" : "自由对局"}
+          {state.noteMode ? "笔记模式" : state.mode === "tutorial" ? "教程" : "对局"}
         </span>
       </div>
 
@@ -33,9 +33,9 @@ export function InspectorPanel({
 
       <div className="grid gap-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-900">候选观察</h3>
+          <h3 className="text-sm font-bold text-slate-900">候选</h3>
           <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-            局部预览
+            当前格
           </span>
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -58,7 +58,7 @@ export function InspectorPanel({
             ))
           ) : (
             <div className="col-span-3 rounded-2xl border border-dashed border-slate-200 bg-white/50 px-4 py-5 text-center text-sm text-slate-500">
-              选中空格后会显示候选。
+              选中空格后显示候选。
             </div>
           )}
         </div>
@@ -94,14 +94,6 @@ export function InspectorPanel({
         </div>
       </div>
 
-      <div className="rounded-[1.4rem] border border-slate-200/80 bg-white/70 p-4">
-        <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">节奏建议</p>
-        <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
-          <li>先看当前格候选，再决定是否需要切到全局观察。</li>
-          <li>卡住时先请求提示，阅读说明后再决定是否应用。</li>
-          <li>移动端也保持完整功能，长流程优先走底部数字盘与右侧教程卡。</li>
-        </ul>
-      </div>
     </section>
   );
 }

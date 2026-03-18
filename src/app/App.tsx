@@ -12,11 +12,12 @@ export default function App(): JSX.Element {
   const { state, dispatch, startNewGame, startTutorial } = useSudokuGame();
 
   function handleDigitClick(digit: Digit): void {
-    const editableSelected =
+    const emptyEditableSelected =
       state.selected !== null &&
-      !state.fixed[state.selected.row][state.selected.col];
+      !state.fixed[state.selected.row][state.selected.col] &&
+      state.board[state.selected.row][state.selected.col] === 0;
 
-    if (editableSelected) {
+    if (emptyEditableSelected) {
       dispatch({ type: "inputDigit", digit });
       return;
     }
@@ -33,12 +34,9 @@ export default function App(): JSX.Element {
           <section className="panel-surface animate-rise p-6 sm:p-7">
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div className="max-w-2xl">
-                <p className="text-xs font-black uppercase tracking-[0.28em] text-slate-500">Sudoku Studio</p>
-                <h1 className="mt-3 font-display text-4xl text-slate-900 sm:text-5xl">
-                  把数独做成一件可沉浸的前端产品
-                </h1>
+                <h1 className="font-display text-4xl text-slate-900 sm:text-5xl">数独</h1>
                 <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
-                  保留纯逻辑求解与教程训练，把棋盘、笔记、观察、提示和移动端交互统一到一套更稳定的 React 体验里。
+                  支持笔记、观察、提示和教程训练。
                 </p>
               </div>
 
@@ -90,7 +88,7 @@ export default function App(): JSX.Element {
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <button className="primary-action" type="button" disabled={state.generating} onClick={() => startNewGame()}>
-                  新开局
+                  新游戏
                 </button>
                 <button className="secondary-action" type="button" disabled={state.generating} onClick={() => dispatch({ type: "requestHint" })}>
                   提示
@@ -146,15 +144,13 @@ export default function App(): JSX.Element {
             <section className="panel-surface p-4 sm:p-6">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">当前对局</p>
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">棋盘</p>
                   <h2 className="mt-2 font-display text-2xl text-slate-900 sm:text-3xl">
-                    {state.mode === "tutorial" ? "训练中的棋盘" : "正在解的一局"}
+                    {state.mode === "tutorial" ? "训练棋盘" : "当前棋盘"}
                   </h2>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                   <span className="soft-chip">{state.status === "won" ? "已完成" : "进行中"}</span>
-                  <span className="soft-chip">键盘可用</span>
-                  <span className="soft-chip">移动端可玩</span>
                 </div>
               </div>
 
@@ -168,9 +164,9 @@ export default function App(): JSX.Element {
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">数字盘</p>
-                  <h2 className="mt-2 font-display text-2xl text-slate-900">快速输入</h2>
+                  <h2 className="mt-2 font-display text-2xl text-slate-900">输入与观察</h2>
                 </div>
-                <div className="soft-chip">{state.noteMode ? "点击切笔记" : "点击直接落子"}</div>
+                <div className="soft-chip">{state.noteMode ? "笔记模式" : "填数模式"}</div>
               </div>
               <DigitPad state={state} onDigitClick={handleDigitClick} />
             </section>

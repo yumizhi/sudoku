@@ -7,9 +7,9 @@ interface TutorialPanelProps {
 }
 
 const DEFAULT_STEPS = [
-  "先选中空格，再看“当前格”里的候选。",
-  "需要扫整盘时，用“全局观察”单独看一个数字。",
-  "优先从裸单和隐藏单开始，卡住时再请求解释型提示。"
+  "先选中空格，再输入数字或切到笔记模式。",
+  "需要扫整盘时，用“全局观察”查看单个数字。",
+  "需要帮助时先看提示解释，再决定是否应用。"
 ];
 
 export function TutorialPanel({ state, onStartTutorial }: TutorialPanelProps): JSX.Element {
@@ -20,18 +20,18 @@ export function TutorialPanel({ state, onStartTutorial }: TutorialPanelProps): J
     <section className="panel-surface flex flex-col gap-5 p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">教程与训练</p>
+          <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">教程</p>
           <h2 className="mt-2 font-display text-2xl text-slate-900">
-            {level ? level.title : "观察路线"}
+            {level ? level.title : "训练关卡"}
           </h2>
         </div>
-        <span className="soft-chip">{level ? level.technique : "自由对局"}</span>
+        <span className="soft-chip">{level ? level.technique : "可选"}</span>
       </div>
 
       <p className="text-sm leading-6 text-slate-600">
         {level
           ? `${level.objective} ${level.summary}`
-          : "自由对局会保留完整工具集；教程关卡则会把观察路线固定下来，方便训练特定技巧。"}
+          : "当前是自由对局。也可以直接开始下方训练关卡。"}
       </p>
 
       <div className="grid gap-3">

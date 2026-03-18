@@ -5,7 +5,6 @@ import {
   cloneNotes,
   deriveFixedGrid,
   evaluateBoard,
-  findFirstEditableCell,
   findHint,
   getCandidates,
   makeBoolGrid,
@@ -39,6 +38,29 @@ type GameAction =
 
 function createMessage(text: string, tone: MessageState["tone"] = "info"): MessageState {
   return { text, tone };
+}
+
+function findDefaultSelectedCell(
+  puzzle: GameLoadPayload["puzzle"],
+  board: GameLoadPayload["puzzle"]
+): { row: number; col: number } {
+  for (let row = 0; row < 9; row += 1) {
+    for (let col = 0; col < 9; col += 1) {
+      if (board[row][col] === 0) {
+        return { row, col };
+      }
+    }
+  }
+
+  for (let row = 0; row < 9; row += 1) {
+    for (let col = 0; col < 9; col += 1) {
+      if (puzzle[row][col] === 0) {
+        return { row, col };
+      }
+    }
+  }
+
+  return { row: 0, col: 0 };
 }
 
 function makeSnapshot(state: GameState): HistorySnapshot {
@@ -102,12 +124,20 @@ function applyDigitPlacement(state: GameState, digit: Digit, fromHint: boolean):
 
   const { row, col } = state.selected;
   if (state.fixed[row][col]) {
-    return state;
+    return fromHint
+      ? state
+      : {
+          ...state,
+          message: createMessage("题目给定格不可修改。", "warn")
+        };
   }
 
   if (state.noteMode && !fromHint) {
     if (state.board[row][col] !== 0) {
-      return state;
+      return {
+        ...state,
+        message: createMessage("当前格已有数字，先擦除后再记录笔记。", "warn")
+      };
     }
     const withHistory = pushHistory(state);
     const notes = cloneNotes(withHistory.notes);
@@ -120,8 +150,18 @@ function applyDigitPlacement(state: GameState, digit: Digit, fromHint: boolean):
     };
   }
 
-  if (state.board[row][col] === digit && !fromHint) {
-    return state;
+  if (state.board[row][col] !== 0 && !fromHint) {
+    if (state.board[row][col] === digit) {
+      return {
+        ...state,
+        message: createMessage(`当前格已经是 ${digit}。`)
+      };
+    }
+
+    return {
+      ...state,
+      message: createMessage("请先擦除当前格，再重新填入。", "warn")
+    };
   }
 
   const withHistory = pushHistory(state);
@@ -165,7 +205,10 @@ function eraseSelectedCell(state: GameState): GameState {
 
   const { row, col } = state.selected;
   if (state.fixed[row][col]) {
-    return state;
+    return {
+      ...state,
+      message: createMessage("题目给定格不可修改。", "warn")
+    };
   }
 
   if (state.board[row][col] === 0 && state.notes[row][col].length === 0) {
@@ -233,7 +276,7 @@ export function createInitialGameState(): GameState {
 export function createGameStateFromPayload(payload: GameLoadPayload): GameState {
   const board = payload.board ? cloneGrid(payload.board) : cloneGrid(payload.puzzle);
   const notes = payload.notes ? cloneNotes(payload.notes) : makeNoteGrid();
-  const selected = payload.selected ?? findFirstEditableCell(board);
+  const selected = payload.selected ?? findDefaultSelectedCell(payload.puzzle, board);
 
   return {
     difficulty: payload.difficulty,
@@ -346,6 +389,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         return {
           ...state,
           message: createMessage("本局已完成，可以直接开始新的一局。", "success")
+        };
+      }
+
+      const evaluation = evaluateBoard(state.board, state.solution);
+      if (evaluation.wrong > 0 || evaluation.conflicts.size > 0) {
+        return {
+          ...state,
+          pendingHint: null,
+          showValidation: true,
+          message: createMessage("当前有错误或冲突，先修正后再请求提示。", "warn")
         };
       }
 
@@ -468,7 +521,7 @@ export function describeSelectedCell(state: GameState): {
   if (!state.selected) {
     return {
       title: "未选中",
-      summary: "选中一个格子后，这里会显示位置、候选与观察建议。",
+      summary: "选中一个格子后，这里会显示位置和候选。",
       candidates: []
     };
   }
@@ -489,7 +542,7 @@ export function describeSelectedCell(state: GameState): {
   if (value !== 0) {
     return {
       title: `${label} 已填`,
-      summary: `当前填入 ${value}。可以擦除后重新落子。`,
+      summary: `当前填入 ${value}。如需修改，请先擦除。`,
       candidates: []
     };
   }
@@ -507,8 +560,8 @@ export function describeSelectedCell(state: GameState): {
     title: `${label} 空格`,
     summary:
       candidates.length === 1
-        ? `只剩候选 ${candidates[0]}，这是一个直接可用的机会。`
-        : `当前还有 ${candidates.length} 个候选，适合配合全局观察一起排除。`,
+        ? `只剩候选 ${candidates[0]}。`
+        : `当前还有 ${candidates.length} 个候选。`,
     candidates
   };
 }

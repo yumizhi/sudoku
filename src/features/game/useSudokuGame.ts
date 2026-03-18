@@ -152,6 +152,10 @@ export function useSudokuGame() {
         return;
       }
 
+      if (state.pendingHint) {
+        return;
+      }
+
       if (state.generating) {
         return;
       }
