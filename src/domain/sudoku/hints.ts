@@ -40,8 +40,7 @@ function buildHintDetail(rawHint: RawHint): HintDetail {
         "同一行、同一列和同一个 3x3 宫已经把其他数字全部排除了。",
         `当一个空格只剩唯一候选时，这一步就是裸单，所以 ${cellLabel} = ${rawHint.value}。`
       ],
-      focusDigit: rawHint.value,
-      focusScope: "local"
+      highlightMode: "board-selected"
     };
   }
 
@@ -58,8 +57,7 @@ function buildHintDetail(rawHint: RawHint): HintDetail {
         `在 ${unitLabel} 里，数字 ${rawHint.value} 最终只剩 ${cellLabel} 这一个位置能放。`,
         `虽然 ${cellLabel} 不一定只有一个候选，但对数字 ${rawHint.value} 来说它是唯一落点，所以 ${cellLabel} = ${rawHint.value}。`
       ],
-      focusDigit: rawHint.value,
-      focusScope: "global"
+      highlightMode: "observe-digit"
     };
   }
 
@@ -74,8 +72,7 @@ function buildHintDetail(rawHint: RawHint): HintDetail {
       "它适合卡住时打破停滞，但不会替代正常的观察训练。",
       "填入之后，优先继续扫描新的裸单或隐藏单。"
     ],
-    focusDigit: rawHint.value,
-    focusScope: "local"
+    highlightMode: "board-selected"
   };
 }
 

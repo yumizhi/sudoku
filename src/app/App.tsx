@@ -28,17 +28,22 @@ export default function App(): JSX.Element {
   const detail = describeSelectedCell(state);
   const tutorial = getTutorialById(state.tutorialId);
   const activeObservedDigit =
-    state.focusScope === "global" && digitPadMode === "observe" ? state.focusDigit : null;
-  const selectedDigit = state.selected ? state.board[state.selected.row][state.selected.col] : 0;
+    state.interactionMode === "observe-digit" && digitPadMode === "observe"
+      ? state.observedDigit
+      : null;
+  const activeBoardDigit =
+    state.interactionMode === "board-selected" && state.selectedCell
+      ? state.board[state.selectedCell.row][state.selectedCell.col]
+      : 0;
 
   function handleDigitClick(digit: Digit): void {
     if (digitPadMode === "observe") {
-      dispatch({ type: "toggleGlobalInspect", digit });
+      dispatch({ type: "toggleObserveDigit", digit });
       return;
     }
 
-    if (selectedDigit !== 0 && selectedDigit === digit) {
-      dispatch({ type: "clearSelection" });
+    if (activeBoardDigit !== 0 && activeBoardDigit === digit) {
+      dispatch({ type: "clearInteraction" });
       return;
     }
 
@@ -47,8 +52,8 @@ export default function App(): JSX.Element {
 
   function handleDigitModeChange(mode: "input" | "observe"): void {
     setDigitPadMode(mode);
-    if (mode === "input") {
-      dispatch({ type: "clearFocus" });
+    if (mode === "input" && state.interactionMode === "observe-digit") {
+      dispatch({ type: "clearInteraction" });
     }
   }
 
@@ -113,8 +118,7 @@ export default function App(): JSX.Element {
             <div className="flex min-h-0 flex-1 items-center justify-center">
               <Board
                 state={state}
-                suppressSelectionHighlight={digitPadMode === "observe"}
-                onSelectCell={(row, col) => dispatch({ type: "selectCell", row, col })}
+                onSelectCell={(row, col) => dispatch({ type: "interactWithBoardCell", row, col })}
               />
             </div>
           </section>

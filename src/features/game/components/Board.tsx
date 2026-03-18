@@ -12,7 +12,6 @@ import type { GameState } from "../types";
 interface BoardProps {
   state: GameState;
   onSelectCell: (row: number, col: number) => void;
-  suppressSelectionHighlight?: boolean;
 }
 
 function makeCellAriaLabel(state: GameState, row: number, col: number): string {
@@ -45,29 +44,26 @@ function renderNotes(notes: Digit[]): JSX.Element {
 
 export function Board({
   state,
-  onSelectCell,
-  suppressSelectionHighlight = false
+  onSelectCell
 }: BoardProps): JSX.Element {
   const conflicts = calculateConflicts(state.board);
   const selected = state.selected;
-  const selectedValue = selected ? state.board[selected.row][selected.col] : 0;
-  const hasDigitFocus = state.focusDigit !== null;
-  const hasLocalDigitPreview =
-    hasDigitFocus &&
-    state.focusScope === "local" &&
-    selected !== null &&
-    !state.fixed[selected.row][selected.col] &&
-    selectedValue === 0;
-  const hasGlobalDigitFocus = hasDigitFocus && state.focusScope === "global";
-  const hasCellLineFocus = !suppressSelectionHighlight && !hasDigitFocus && selectedValue !== 0;
+  const boardSelectedCell = state.interactionMode === "board-selected" ? state.selectedCell : null;
+  const boardSelectedDigit =
+    boardSelectedCell !== null
+      ? state.board[boardSelectedCell.row][boardSelectedCell.col]
+      : 0;
+  const observedDigit = state.interactionMode === "observe-digit" ? state.observedDigit : null;
+  const hasBoardSelected = boardSelectedCell !== null && boardSelectedDigit !== 0;
+  const hasObservedDigit = observedDigit !== null;
   const occupiedRows = new Set<number>();
   const occupiedCols = new Set<number>();
   const occupiedBoxes = new Set<string>();
 
-  if (hasGlobalDigitFocus && state.focusDigit !== null) {
+  if (hasObservedDigit && observedDigit !== null) {
     for (let row = 0; row < 9; row += 1) {
       for (let col = 0; col < 9; col += 1) {
-        if (state.board[row][col] === state.focusDigit) {
+        if (state.board[row][col] === observedDigit) {
           occupiedRows.add(row);
           occupiedCols.add(col);
           occupiedBoxes.add(`${boxStart(row)}-${boxStart(col)}`);
@@ -104,70 +100,63 @@ export function Board({
               !isFixed &&
               value !== 0 &&
               value !== state.solution[row][col];
+            const isBoardSelectedSource =
+              boardSelectedCell?.row === row && boardSelectedCell?.col === col;
             const isRelated =
-              selected !== null &&
-              (((hasCellLineFocus && !suppressSelectionHighlight) || hasLocalDigitPreview) &&
-                isPeer(selected.row, selected.col, row, col));
-            const isSameValue = hasCellLineFocus && value !== 0 && value === selectedValue;
+              hasBoardSelected &&
+              boardSelectedCell !== null &&
+              isPeer(boardSelectedCell.row, boardSelectedCell.col, row, col);
+            const isSameValue = hasBoardSelected && value !== 0 && value === boardSelectedDigit;
             const candidateMatch =
-              hasGlobalDigitFocus &&
+              hasObservedDigit &&
               value === 0 &&
-              state.focusDigit !== null &&
-              getCandidates(state.board, row, col).includes(state.focusDigit);
+              observedDigit !== null &&
+              getCandidates(state.board, row, col).includes(observedDigit);
             const isBlockedByObservedLine =
-              hasGlobalDigitFocus &&
+              hasObservedDigit &&
               value === 0 &&
               !candidateMatch &&
               (occupiedRows.has(row) ||
                 occupiedCols.has(col) ||
                 occupiedBoxes.has(`${boxStart(row)}-${boxStart(col)}`));
-            const isDigitMatch =
-              (hasLocalDigitPreview &&
-                selected !== null &&
-                !(row === selected.row && col === selected.col) &&
-                value !== 0 &&
-                value === state.focusDigit &&
-                isPeer(selected.row, selected.col, row, col)) ||
-              (hasGlobalDigitFocus && value !== 0 && value === state.focusDigit);
+            const isObservedDigitMatch =
+              hasObservedDigit && observedDigit !== null && value !== 0 && value === observedDigit;
 
             let toneClass = isFixed ? "bg-stone-100 text-slate-900" : "bg-white text-tide";
             let borderClass = "border-slate-300";
             let ringClass = "";
 
-            if (isBlockedByObservedLine) {
-              toneClass = "bg-[#edf4ff] text-slate-700";
-            }
+            if (state.interactionMode === "board-selected") {
+              if (isRelated) {
+                toneClass = "bg-[#dbe9fb] text-slate-900";
+              }
 
-            if (isRelated) {
-              toneClass = "bg-[#dbe9fb] text-slate-900";
-            }
+              if (isSameValue) {
+                toneClass = "bg-[#2489f0] text-white";
+                borderClass = "border-[#2489f0]";
+              }
 
-            if (candidateMatch) {
-              toneClass = "bg-[#dbe9fb] text-slate-900";
-              borderClass = "border-[#8ebcff]";
-              ringClass = "ring-1 ring-inset ring-[#8ebcff]";
-            }
+              if (isBoardSelectedSource) {
+                toneClass = "bg-[#79a9ff] text-white";
+                borderClass = "border-[#6f98e9]";
+                ringClass = "ring-2 ring-inset ring-[#6f98e9]";
+              }
+            } else if (state.interactionMode === "observe-digit") {
+              if (isBlockedByObservedLine) {
+                toneClass = "bg-[#edf4ff] text-slate-700";
+              }
 
-            if (isDigitMatch || isSameValue) {
-              toneClass = "bg-[#2489f0] text-white";
-              borderClass = "border-[#2489f0]";
-              ringClass = "";
-            }
+              if (candidateMatch) {
+                toneClass = "bg-[#dbe9fb] text-slate-900";
+                borderClass = "border-[#8ebcff]";
+                ringClass = "ring-1 ring-inset ring-[#8ebcff]";
+              }
 
-            if (isSelected && value === 0) {
-              toneClass = "bg-[#cfe2fb] text-slate-900";
-              borderClass = "border-[#6f98e9]";
-              ringClass = "ring-2 ring-inset ring-[#6f98e9]";
-            }
-
-            if (isSelected && value !== 0) {
-              toneClass = "bg-[#79a9ff] text-white";
-              borderClass = "border-[#6f98e9]";
-              ringClass = "ring-2 ring-inset ring-[#6f98e9]";
-            }
-
-            if (hasLocalDigitPreview && isSelected) {
-              toneClass = "bg-[#cfe2fb] text-slate-900";
+              if (isObservedDigitMatch) {
+                toneClass = "bg-[#2489f0] text-white";
+                borderClass = "border-[#2489f0]";
+                ringClass = "";
+              }
             }
 
             if (isConflict) {

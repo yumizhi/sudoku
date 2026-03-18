@@ -27,6 +27,14 @@ function makeState() {
 }
 
 describe("gameReducer", () => {
+  it("starts with no board or observe highlight", () => {
+    const state = makeState();
+
+    expect(state.interactionMode).toBe("none");
+    expect(state.selectedCell).toBeNull();
+    expect(state.observedDigit).toBeNull();
+  });
+
   it("allows overwriting a filled editable cell directly", () => {
     let state = makeState();
 
@@ -47,21 +55,42 @@ describe("gameReducer", () => {
     expect(next.message.tone).toBe("info");
   });
 
-  it("keeps global observation active while moving selection", () => {
+  it("enters board-selected when clicking a filled cell and toggles off on second click", () => {
     let state = makeState();
-    state = gameReducer(state, { type: "toggleGlobalInspect", digit: 5 });
+    state = gameReducer(state, { type: "interactWithBoardCell", row: 0, col: 2 });
 
-    const moved = gameReducer(state, { type: "moveSelection", deltaRow: 1, deltaCol: 0 });
-    expect(moved.focusScope).toBe("global");
-    expect(moved.focusDigit).toBe(5);
+    expect(state.interactionMode).toBe("board-selected");
+    expect(state.selectedCell).toEqual({ row: 0, col: 2 });
+    expect(state.observedDigit).toBeNull();
+
+    state = gameReducer(state, { type: "interactWithBoardCell", row: 0, col: 2 });
+    expect(state.interactionMode).toBe("none");
+    expect(state.selectedCell).toBeNull();
+    expect(state.observedDigit).toBeNull();
   });
 
-  it("clears selection and focus when requested", () => {
-    const state = makeState();
-    const next = gameReducer(state, { type: "clearSelection" });
+  it("observe digit replaces board-selected and toggles off on repeated click", () => {
+    let state = makeState();
+    state = gameReducer(state, { type: "interactWithBoardCell", row: 0, col: 2 });
+    state = gameReducer(state, { type: "toggleObserveDigit", digit: 5 });
 
-    expect(next.selected).toBeNull();
-    expect(next.focusDigit).toBeNull();
-    expect(next.focusScope).toBeNull();
+    expect(state.interactionMode).toBe("observe-digit");
+    expect(state.selectedCell).toBeNull();
+    expect(state.observedDigit).toBe(5);
+
+    state = gameReducer(state, { type: "toggleObserveDigit", digit: 5 });
+    expect(state.interactionMode).toBe("none");
+    expect(state.selectedCell).toBeNull();
+    expect(state.observedDigit).toBeNull();
+  });
+
+  it("switches from observe-digit to board-selected when clicking a filled cell", () => {
+    let state = makeState();
+    state = gameReducer(state, { type: "toggleObserveDigit", digit: 5 });
+    state = gameReducer(state, { type: "interactWithBoardCell", row: 0, col: 2 });
+
+    expect(state.interactionMode).toBe("board-selected");
+    expect(state.selectedCell).toEqual({ row: 0, col: 2 });
+    expect(state.observedDigit).toBeNull();
   });
 });

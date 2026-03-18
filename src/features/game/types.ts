@@ -3,7 +3,6 @@ import type {
   CellPosition,
   Difficulty,
   Digit,
-  FocusScope,
   GameMode,
   GameStatus,
   Grid,
@@ -18,12 +17,15 @@ export interface MessageState {
   tone: MessageTone;
 }
 
+export type InteractionMode = "none" | "board-selected" | "observe-digit";
+
 export interface HistorySnapshot {
   board: Grid;
   notes: NotesGrid;
   selected: CellPosition | null;
-  focusDigit: Digit | null;
-  focusScope: FocusScope | null;
+  interactionMode: InteractionMode;
+  selectedCell: CellPosition | null;
+  observedDigit: Digit | null;
   noteMode: boolean;
   mistakes: number;
   status: GameStatus;
@@ -38,8 +40,9 @@ export interface GameState {
   fixed: BoolGrid;
   notes: NotesGrid;
   selected: CellPosition | null;
-  focusDigit: Digit | null;
-  focusScope: FocusScope | null;
+  interactionMode: InteractionMode;
+  selectedCell: CellPosition | null;
+  observedDigit: Digit | null;
   pendingHint: HintDetail | null;
   noteMode: boolean;
   mistakes: number;
@@ -62,8 +65,9 @@ export interface GameLoadPayload {
   board?: Grid;
   notes?: NotesGrid;
   selected?: CellPosition | null;
-  focusDigit?: Digit | null;
-  focusScope?: FocusScope | null;
+  interactionMode?: InteractionMode;
+  selectedCell?: CellPosition | null;
+  observedDigit?: Digit | null;
   noteMode?: boolean;
   mistakes?: number;
   elapsedSeconds?: number;
