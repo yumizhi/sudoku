@@ -1,15 +1,6 @@
-export const GRID_SIZE = 9;
-export const BOX_SIZE = 3;
-export const HISTORY_LIMIT = 240;
-export const STORAGE_KEY = "sudoku-studio-state-v1";
+import type { TutorialLevel } from "./types";
 
-export const DIFFICULTY_CONFIG = {
-  easy: { label: "简单", clues: 40 },
-  medium: { label: "中等", clues: 33 },
-  hard: { label: "困难", clues: 28 }
-};
-
-export const TUTORIAL_LEVELS = [
+export const TUTORIAL_LEVELS: TutorialLevel[] = [
   {
     id: "t1-naked-single",
     title: "教程 1：裸单",
@@ -17,7 +8,7 @@ export const TUTORIAL_LEVELS = [
     objective: "先学会在一个空格里直接收敛到唯一答案。",
     summary: "当一个空格只剩一个候选时，不需要再推理，直接填写。",
     steps: [
-      "先选中 R1C1，再看“当前格”里的候选芯片。",
+      "先选中 R1C1，再看右侧“当前格”里的候选芯片。",
       "把这一行、这一列和这个 3x3 宫里已经出现的数字排除后，这个格子只剩 5 可以填。",
       "填入 5 之后，再沿着它的行列继续扫新的裸单。"
     ],
@@ -73,10 +64,13 @@ export const TUTORIAL_LEVELS = [
   }
 ];
 
-export function getTutorialById(id) {
-  return TUTORIAL_LEVELS.find((item) => item.id === id) || null;
+export function getTutorialById(id: string | null | undefined): TutorialLevel | null {
+  if (!id) {
+    return null;
+  }
+  return TUTORIAL_LEVELS.find((level) => level.id === id) ?? null;
 }
 
-export function isValidTutorialId(id) {
-  return typeof id === "string" && getTutorialById(id) !== null;
+export function isValidTutorialId(id: string | null | undefined): boolean {
+  return getTutorialById(id) !== null;
 }
