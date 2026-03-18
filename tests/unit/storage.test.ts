@@ -1,91 +1,85 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  LEGACY_STORAGE_KEY,
-  STORAGE_KEY,
-  TUTORIAL_LEVELS,
-  gridFromString,
-  makeNoteGrid
-} from "../../src/domain/sudoku";
-import { loadPersistedGame } from "../../src/features/game/storage";
+import { STORAGE_KEY, gridFromString, gridToString } from "../../src/domain/sudoku";
+import { loadPersistedGame, savePersistedGame } from "../../src/features/game/storage";
+import { createGameStateFromPayload } from "../../src/features/game/gameReducer";
 
-describe("storage migration", () => {
+describe("storage", () => {
   beforeEach(() => {
     window.localStorage.clear();
   });
 
-  it("loads a legacy v1 snapshot into the new runtime payload", () => {
-    const tutorial = TUTORIAL_LEVELS[0];
-    const puzzle = gridFromString(tutorial.puzzle, true);
-    const solution = gridFromString(tutorial.solution, false);
-
-    if (!puzzle || !solution) {
-      throw new Error("tutorial payload failed to load");
-    }
-
-    window.localStorage.setItem(
-      LEGACY_STORAGE_KEY,
-      JSON.stringify({
-        difficulty: "medium",
-        puzzle,
-        solution,
-        board: puzzle,
-        notes: makeNoteGrid(),
-        selected: { row: 0, col: 0 },
-        focusDigit: null,
-        focusScope: null,
-        noteMode: false,
-        mistakes: 0,
-        elapsedSeconds: 12,
-        status: "playing",
-        mode: "tutorial",
-        tutorialId: tutorial.id
-      })
+  it("loads a persisted v5 game snapshot", () => {
+    const puzzle = gridFromString(
+      "034678912672195348198342567859761423426853791713924856961537284287419635345286179",
+      true
+    );
+    const solution = gridFromString(
+      "534678912672195348198342567859761423426853791713924856961537284287419635345286179",
+      false
     );
 
-    const restored = loadPersistedGame();
-    expect(restored).not.toBeNull();
-    expect(restored?.mode).toBe("tutorial");
-    expect(restored?.tutorialId).toBe(tutorial.id);
-    expect(restored?.elapsedSeconds).toBe(12);
-  });
-
-  it("restores selectedDigit from the v4 focus payload", () => {
-    const tutorial = TUTORIAL_LEVELS[0];
-    const puzzle = gridFromString(tutorial.puzzle, true);
-    const solution = gridFromString(tutorial.solution, false);
-
     if (!puzzle || !solution) {
-      throw new Error("tutorial payload failed to load");
+      throw new Error("puzzle failed to load");
     }
 
     window.localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        version: 4,
+        version: 5,
         difficulty: "medium",
         seed: 7,
-        mode: "normal",
-        tutorialId: null,
-        puzzle: tutorial.puzzle,
-        solution: tutorial.solution,
-        board: tutorial.puzzle,
-        notes: makeNoteGrid(),
-        focus: {
-          digitMode: "input",
-          cell: { row: 0, col: 0 },
-          selectedDigit: 4,
-          observedDigit: null
-        },
-        noteMode: false,
-        mistakes: 0,
+        puzzle: gridToString(puzzle),
+        solution: gridToString(solution),
+        board: gridToString(puzzle),
+        selectedCell: { row: 0, col: 0 },
         elapsedSeconds: 18,
         status: "playing"
       })
     );
 
     const restored = loadPersistedGame();
-    expect(restored?.focus?.digitMode).toBe("input");
-    expect(restored?.focus?.selectedDigit).toBe(4);
-    expect(restored?.focus?.cell).toEqual({ row: 0, col: 0 });
+    expect(restored?.difficulty).toBe("medium");
+    expect(restored?.selectedCell).toEqual({ row: 0, col: 0 });
+    expect(restored?.elapsedSeconds).toBe(18);
+  });
+
+  it("saves the current board using the v5 payload", () => {
+    const puzzle = gridFromString(
+      "034678912672195348198342567859761423426853791713924856961537284287419635345286179",
+      true
+    );
+    const solution = gridFromString(
+      "534678912672195348198342567859761423426853791713924856961537284287419635345286179",
+      false
+    );
+
+    if (!puzzle || !solution) {
+      throw new Error("puzzle failed to load");
+    }
+
+    const state = createGameStateFromPayload({
+      difficulty: "medium",
+      seed: 2,
+      puzzle,
+      solution,
+      board: solution,
+      selectedCell: { row: 0, col: 0 },
+      elapsedSeconds: 42,
+      status: "won"
+    });
+
+    savePersistedGame(state);
+
+    const payload = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "null") as {
+      version: number;
+      status: string;
+      elapsedSeconds: number;
+      selectedCell: { row: number; col: number } | null;
+    } | null;
+
+    expect(payload?.version).toBe(5);
+    expect(payload?.status).toBe("won");
+    expect(payload?.elapsedSeconds).toBe(42);
+    expect(payload?.selectedCell).toEqual({ row: 0, col: 0 });
   });
 });

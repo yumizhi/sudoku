@@ -13,85 +13,88 @@ function makeState() {
   );
 
   if (!puzzle || !solution) {
-    throw new Error("tutorial payload failed to load");
+    throw new Error("puzzle failed to load");
   }
 
   return createGameStateFromPayload({
     difficulty: "medium",
     seed: 1,
     puzzle,
-    solution,
-    mode: "normal",
-    tutorialId: null
+    solution
   });
 }
 
-describe("gameReducer focus model", () => {
-  it("starts in global input mode with the first empty cell selected", () => {
+describe("gameReducer", () => {
+  it("selects the first editable cell when a game loads", () => {
     const state = makeState();
 
-    expect(state.focus.digitMode).toBe("input");
-    expect(state.focus.cell).toEqual({ row: 0, col: 0 });
-    expect(state.focus.selectedDigit).toBeNull();
-    expect(state.focus.observedDigit).toBeNull();
-  });
-
-  it("uses pressDigit for input mode and keeps the input focus digit active", () => {
-    const state = gameReducer(makeState(), { type: "pressDigit", digit: 1 });
-
-    expect(state.board[0][0]).toBe(1);
-    expect(state.focus.digitMode).toBe("input");
-    expect(state.focus.cell).toEqual({ row: 0, col: 0 });
-    expect(state.focus.selectedDigit).toBe(1);
-    expect(state.focus.observedDigit).toBeNull();
-  });
-
-  it("switching input -> observe clears selectedDigit", () => {
-    let state = gameReducer(makeState(), { type: "pressDigit", digit: 1 });
-    state = gameReducer(state, { type: "setDigitMode", mode: "observe" });
-
-    expect(state.focus.digitMode).toBe("observe");
-    expect(state.focus.selectedDigit).toBeNull();
-    expect(state.focus.observedDigit).toBeNull();
-  });
-
-  it("observe mode toggles observedDigit without editing the board", () => {
-    let state = gameReducer(makeState(), { type: "setDigitMode", mode: "observe" });
-    state = gameReducer(state, { type: "pressDigit", digit: 5 });
-
-    expect(state.focus.digitMode).toBe("observe");
-    expect(state.focus.observedDigit).toBe(5);
-    expect(state.board[0][0]).toBe(0);
-
-    state = gameReducer(state, { type: "pressDigit", digit: 5 });
-    expect(state.focus.observedDigit).toBeNull();
+    expect(state.selectedCell).toEqual({ row: 0, col: 0 });
+    expect(state.highlightedDigit).toBeNull();
     expect(state.board[0][0]).toBe(0);
   });
 
-  it("switching observe -> input clears observedDigit", () => {
-    let state = gameReducer(makeState(), { type: "setDigitMode", mode: "observe" });
-    state = gameReducer(state, { type: "pressDigit", digit: 5 });
-    state = gameReducer(state, { type: "setDigitMode", mode: "input" });
+  it("clicking a filled cell toggles same-digit highlighting", () => {
+    let state = makeState();
 
-    expect(state.focus.digitMode).toBe("input");
-    expect(state.focus.observedDigit).toBeNull();
+    state = gameReducer(state, { type: "clickCell", row: 0, col: 1 });
+    expect(state.selectedCell).toEqual({ row: 0, col: 1 });
+    expect(state.highlightedDigit).toBe(3);
+
+    state = gameReducer(state, { type: "clickCell", row: 0, col: 1 });
+    expect(state.selectedCell).toBeNull();
+    expect(state.highlightedDigit).toBeNull();
   });
 
-  it("keeps focus digit when selecting a new empty cell in input mode", () => {
-    let state = gameReducer(makeState(), { type: "pressDigit", digit: 4 });
-    state = gameReducer(state, { type: "selectCell", row: 1, col: 1 });
+  it("clicking an empty cell clears any previous digit highlight", () => {
+    let state = makeState();
 
-    expect(state.focus.cell).toEqual({ row: 1, col: 1 });
-    expect(state.focus.selectedDigit).toBe(4);
+    state = gameReducer(state, { type: "clickCell", row: 0, col: 1 });
+    state = gameReducer(state, { type: "clickCell", row: 0, col: 0 });
+
+    expect(state.selectedCell).toEqual({ row: 0, col: 0 });
+    expect(state.highlightedDigit).toBeNull();
   });
 
-  it("allows overwriting a filled editable cell directly through the same pressDigit path", () => {
-    let state = gameReducer(makeState(), { type: "pressDigit", digit: 1 });
-    const next = gameReducer(state, { type: "pressDigit", digit: 3 });
+  it("fills the selected editable cell immediately", () => {
+    const state = gameReducer(makeState(), { type: "inputDigit", digit: 5 });
 
-    expect(next.board[0][0]).toBe(3);
-    expect(next.message.text).toBe("已填入 3。");
-    expect(next.history).toHaveLength(2);
-    expect(next.focus.selectedDigit).toBe(3);
+    expect(state.board[0][0]).toBe(5);
+    expect(state.highlightedDigit).toBeNull();
+    expect(state.status).toBe("won");
+  });
+
+  it("clears a selected editable cell", () => {
+    let state = gameReducer(makeState(), { type: "inputDigit", digit: 5 });
+    state = gameReducer(state, { type: "clearCell" });
+
+    expect(state.board[0][0]).toBe(0);
+    expect(state.status).toBe("playing");
+  });
+
+  it("marks the game won only when the full board matches the solution", () => {
+    const solvedPuzzle = gridFromString(
+      "034678912672195348198342567859761423426853791713924856961537284287419635345286179",
+      true
+    );
+    const solvedBoard = gridFromString(
+      "534678912672195348198342567859761423426853791713924856961537284287419635345286179",
+      false
+    );
+
+    if (!solvedPuzzle || !solvedBoard) {
+      throw new Error("puzzle failed to load");
+    }
+
+    const state = createGameStateFromPayload({
+      difficulty: "medium",
+      seed: 1,
+      puzzle: solvedPuzzle,
+      solution: solvedBoard,
+      board: solvedPuzzle,
+      selectedCell: { row: 0, col: 0 }
+    });
+
+    const next = gameReducer(state, { type: "inputDigit", digit: 5 });
+    expect(next.status).toBe("won");
   });
 });

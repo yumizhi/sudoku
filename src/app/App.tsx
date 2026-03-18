@@ -1,281 +1,188 @@
-import { useState } from "react";
-import { DIFFICULTY_CONFIG, getTutorialById } from "../domain/sudoku";
-import type { Digit } from "../domain/sudoku";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { RefObject } from "react";
+import { DIFFICULTY_CONFIG } from "../domain/sudoku";
+import type { Difficulty, Digit } from "../domain/sudoku";
 import {
-  describeSelectedCell,
   formatTime,
-  getFocusDigit
+  getFilledCount,
+  getSelectedCellLabel
 } from "../features/game/gameReducer";
 import { Board } from "../features/game/components/Board";
 import { DigitPad } from "../features/game/components/DigitPad";
-import { HintModal } from "../features/game/components/HintModal";
-import { TutorialPanel } from "../features/game/components/TutorialPanel";
-import { TutorialPickerModal } from "../features/game/components/TutorialPickerModal";
-import {
-  CheckIcon,
-  EraserIcon,
-  HintIcon,
-  NewGameIcon,
-  NoteIcon,
-  RedoIcon,
-  TutorialIcon,
-  UndoIcon
-} from "../features/game/components/icons";
 import { useSudokuGame } from "../features/game/useSudokuGame";
 
-export default function App(): JSX.Element {
-  const { state, dispatch, startNewGame, startTutorial } = useSudokuGame();
-  const [tutorialPickerOpen, setTutorialPickerOpen] = useState(false);
-  const [tutorialGuideOpen, setTutorialGuideOpen] = useState(false);
+function useBoardSize(): {
+  shellRef: RefObject<HTMLDivElement>;
+  headerRef: RefObject<HTMLElement>;
+  controlsRef: RefObject<HTMLElement>;
+  boardSize: number;
+} {
+  const shellRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const controlsRef = useRef<HTMLElement>(null);
+  const [boardSize, setBoardSize] = useState(320);
 
-  const detail = describeSelectedCell(state);
-  const tutorial = getTutorialById(state.tutorialId);
-  const activeDigit = getFocusDigit(state);
-  const activeObservedDigit =
-    state.focus.digitMode === "observe" ? state.focus.observedDigit : null;
+  useEffect(() => {
+    const shell = shellRef.current;
+    const header = headerRef.current;
+    const controls = controlsRef.current;
+    if (!shell) {
+      return;
+    }
+
+    const calculate = (): void => {
+      const shellRect = shell.getBoundingClientRect();
+      const headerHeight = header?.getBoundingClientRect().height ?? 0;
+      const controlsRect = controls?.getBoundingClientRect();
+      const controlsWidth = controlsRect?.width ?? 0;
+      const controlsHeight = controlsRect?.height ?? 0;
+      const desktop = window.matchMedia("(min-width: 1024px)").matches;
+      const gap = desktop ? 16 : 12;
+
+      const widthLimit = desktop ? shellRect.width - controlsWidth - gap : shellRect.width;
+      const heightLimit = desktop
+        ? shellRect.height - headerHeight - gap
+        : shellRect.height - headerHeight - controlsHeight - gap * 2;
+
+      const nextSize = Math.max(220, Math.floor(Math.min(widthLimit, heightLimit)));
+      setBoardSize(nextSize);
+    };
+
+    calculate();
+
+    const observer = new ResizeObserver(calculate);
+    observer.observe(shell);
+    if (header) observer.observe(header);
+    if (controls) observer.observe(controls);
+    window.addEventListener("resize", calculate);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", calculate);
+    };
+  }, []);
+
+  return { shellRef, headerRef, controlsRef, boardSize };
+}
+
+export default function App(): JSX.Element {
+  const { state, dispatch, startNewGame } = useSudokuGame();
+  const { shellRef, headerRef, controlsRef, boardSize } = useBoardSize();
+
+  const filledCount = getFilledCount(state);
+  const selectionLabel = getSelectedCellLabel(state);
+  const statusLabel = state.status === "won" ? "已完成" : `${filledCount}/81`;
+  const statusToneClass =
+    state.status === "won"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : "border-slate-200 bg-white text-slate-700";
+
+  const headerMessage = useMemo(() => {
+    if (state.message.text) {
+      return state.message.text;
+    }
+
+    if (state.status === "won") {
+      return "已完成，开始新游戏继续。";
+    }
+
+    return "选择空格后，可用键盘或下方数字键填入。";
+  }, [state.message.text, state.status]);
 
   function handleDigitClick(digit: Digit): void {
-    dispatch({ type: "pressDigit", digit });
+    dispatch({ type: "inputDigit", digit });
   }
-
-  function handleDigitModeChange(mode: "input" | "observe"): void {
-    dispatch({ type: "setDigitMode", mode });
-  }
-
-  function handleStartTutorial(levelId: string): void {
-    startTutorial(levelId);
-    setTutorialPickerOpen(false);
-    setTutorialGuideOpen(true);
-  }
-
-  const messageToneClass =
-    state.message.tone === "success"
-      ? "border-pine/20 bg-pine/10 text-pine"
-      : state.message.tone === "warn"
-        ? "border-ember/20 bg-ember/10 text-ember"
-        : "border-slate-200 bg-white/75 text-slate-700";
-  const toolButtonClass =
-    "secondary-action group flex min-h-[4.8rem] flex-col items-center justify-center gap-1.5 px-2 py-3 text-center sm:min-h-0 sm:flex-row sm:justify-start";
-  const topButtonClass =
-    "group flex min-h-[4.4rem] flex-col items-center justify-center gap-1.5 text-center sm:min-h-0 sm:flex-row";
-  const iconClass = "h-5 w-5 text-slate-400 transition group-hover:text-tide";
-  const primaryIconClass = "h-5 w-5 text-white/90";
 
   return (
-    <div className="relative min-h-dvh overflow-hidden lg:h-dvh">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[22rem] bg-[radial-gradient(circle_at_14%_14%,rgba(49,95,143,0.18),transparent_28%),radial-gradient(circle_at_88%_10%,rgba(47,107,87,0.14),transparent_24%),radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.74),transparent_42%)]" />
-
-      <main className="relative mx-auto min-h-dvh w-full max-w-7xl px-3 py-3 sm:px-4 lg:h-dvh lg:min-h-0 lg:overflow-hidden lg:px-5 lg:py-4">
-        <div className="grid gap-3 lg:h-full lg:grid-cols-[minmax(0,1fr),minmax(20rem,23rem)] lg:gap-4">
-          <section className="panel-surface flex min-h-0 flex-col p-3 sm:p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="font-display text-xl text-slate-900 sm:text-2xl">数独</h1>
-                <span className="soft-chip">
-                  {state.mode === "tutorial" && tutorial
-                    ? tutorial.technique
-                    : DIFFICULTY_CONFIG[state.difficulty].label}
-                </span>
-                <span className="soft-chip">{detail.title}</span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="metric-card min-w-[6.5rem] px-3 py-2">
-                  <span>时间</span>
-                  <strong>{formatTime(state.elapsedSeconds)}</strong>
-                </div>
-                <span className="soft-chip">{state.status === "won" ? "已完成" : "进行中"}</span>
-                {state.noteMode ? <span className="soft-chip">笔记</span> : null}
-                {activeObservedDigit ? <span className="soft-chip">观察 {activeObservedDigit}</span> : null}
-              </div>
+    <div className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(148,163,184,0.16),transparent_24%),linear-gradient(180deg,#f8fafc_0%,#e2e8f0_100%)]">
+      <main ref={shellRef} className="mx-auto flex h-full w-full max-w-6xl flex-col gap-3 p-3 sm:gap-4 sm:p-4">
+        <header ref={headerRef} className="panel-surface flex flex-wrap items-center justify-between gap-2.5 px-3 py-3 sm:px-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg font-semibold tracking-tight text-slate-950 sm:text-xl">Sudoku</h1>
+              <span className={["rounded-full border px-2.5 py-1 text-xs font-semibold", statusToneClass].join(" ")}>
+                {statusLabel}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
+                {formatTime(state.elapsedSeconds)}
+              </span>
             </div>
+            <p className="mt-1 truncate text-sm text-slate-600">{headerMessage}</p>
+          </div>
 
-            <div
-              className={[
-                "mt-3 rounded-[1.1rem] border px-3 py-2 text-sm font-medium shadow-sm",
-                messageToneClass
-              ].join(" ")}
-              aria-live="polite"
-            >
-              {state.message.text || " "}
-            </div>
-
-            <div className="flex min-h-0 flex-1 items-center justify-center">
-              <Board
-                state={state}
-                onSelectCell={(row, col) => dispatch({ type: "selectCell", row, col })}
-              />
-            </div>
-          </section>
-
-          <aside className="panel-surface flex min-h-0 flex-col gap-3 p-3 sm:p-4 lg:max-h-full lg:overflow-y-auto">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <label className="grid gap-1.5 sm:col-span-2">
-                <span className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-slate-500">
-                  难度
-                </span>
-                <select
-                  value={state.difficulty}
-                  disabled={state.generating}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:border-tide/30 focus:ring-2 focus:ring-tide/20"
-                  onChange={(event) =>
-                    dispatch({
-                      type: "setDifficulty",
-                      difficulty: event.target.value as keyof typeof DIFFICULTY_CONFIG
-                    })
-                  }
-                >
-                  {Object.entries(DIFFICULTY_CONFIG).map(([key, config]) => (
-                    <option key={key} value={key}>
-                      {config.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <button
-                className={["primary-action", topButtonClass].join(" ")}
-                type="button"
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700">
+              <span className="text-xs uppercase tracking-[0.16em] text-slate-500">难度</span>
+              <select
+                value={state.difficulty}
                 disabled={state.generating}
-                onClick={() => startNewGame()}
-              >
-                <NewGameIcon className={primaryIconClass} />
-                <span>新游戏</span>
-              </button>
-              <button
-                className={["secondary-action", topButtonClass].join(" ")}
-                type="button"
-                disabled={state.generating}
-                onClick={() => setTutorialPickerOpen(true)}
-              >
-                <TutorialIcon className={iconClass} />
-                <span>教程选关</span>
-              </button>
-              {state.mode === "tutorial" ? (
-                <button
-                  className={["secondary-action sm:col-span-2", topButtonClass].join(" ")}
-                  type="button"
-                  disabled={state.generating}
-                  onClick={() => setTutorialGuideOpen(true)}
-                >
-                  <TutorialIcon className={iconClass} />
-                  <span>查看教程说明</span>
-                </button>
-              ) : null}
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 lg:grid-cols-2">
-              <button
-                className={toolButtonClass}
-                type="button"
-                disabled={state.generating}
-                onClick={() =>
-                  state.pendingHint
-                    ? dispatch({ type: "applyHint" })
-                    : dispatch({ type: "requestHint" })
+                className="bg-transparent text-sm font-semibold text-slate-900 outline-none"
+                onChange={(event) =>
+                  dispatch({
+                    type: "setDifficulty",
+                    difficulty: event.target.value as Difficulty
+                  })
                 }
               >
-                <HintIcon className={iconClass} />
-                <span>{state.pendingHint ? "应用提示" : "提示"}</span>
-              </button>
-              <button
-                className={toolButtonClass}
-                type="button"
-                disabled={state.generating}
-                onClick={() => dispatch({ type: "checkBoard" })}
-              >
-                <CheckIcon className={iconClass} />
-                <span>检查</span>
-              </button>
-              <button
-                className={toolButtonClass}
-                type="button"
-                disabled={state.generating}
-                onClick={() => dispatch({ type: "toggleNoteMode" })}
-              >
-                <NoteIcon className={iconClass} />
-                <span>{state.noteMode ? "笔记开" : "笔记关"}</span>
-              </button>
-              <button
-                className={toolButtonClass}
-                type="button"
-                disabled={state.generating}
-                onClick={() => dispatch({ type: "eraseCell" })}
-              >
-                <EraserIcon className={iconClass} />
-                <span>擦除</span>
-              </button>
-              <button
-                className={toolButtonClass}
-                type="button"
-                disabled={state.generating}
-                onClick={() => dispatch({ type: "undo" })}
-              >
-                <UndoIcon className={iconClass} />
-                <span>撤销</span>
-              </button>
-              <button
-                className={toolButtonClass}
-                type="button"
-                disabled={state.generating}
-                onClick={() => dispatch({ type: "redo" })}
-              >
-                <RedoIcon className={iconClass} />
-                <span>重做</span>
-              </button>
+                {Object.entries(DIFFICULTY_CONFIG).map(([key, config]) => (
+                  <option key={key} value={key}>
+                    {config.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <button
+              type="button"
+              className="rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/70 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={state.generating}
+              onClick={() => startNewGame()}
+            >
+              新游戏
+            </button>
+            <button
+              type="button"
+              className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-sky-200 hover:bg-sky-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/70 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={state.generating}
+              onClick={() => dispatch({ type: "restartGame" })}
+            >
+              重开
+            </button>
+          </div>
+        </header>
+
+        <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:gap-4">
+          <section className="panel-surface flex min-h-0 flex-1 items-center justify-center p-2.5 sm:p-4">
+            <Board
+              size={boardSize}
+              state={state}
+              onSelectCell={(row, col) => dispatch({ type: "clickCell", row, col })}
+            />
+          </section>
+
+          <aside
+            ref={controlsRef}
+            className="panel-surface flex shrink-0 flex-col gap-3 px-3 py-3 sm:px-4 lg:w-[18.5rem] lg:py-4"
+          >
+            <div className="grid grid-cols-2 gap-2 text-sm text-slate-600">
+              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
+                <div className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">选中</div>
+                <div className="mt-1 font-semibold text-slate-900">{selectionLabel}</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
+                <div className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">输入</div>
+                <div className="mt-1 font-semibold text-slate-900">键盘 + 点按</div>
+              </div>
             </div>
 
-            <div className="shrink-0 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white/80 p-3">
-              {state.mode === "tutorial" && tutorial ? (
-                <div className="mb-3 flex justify-end">
-                  <button
-                    type="button"
-                    className="soft-chip"
-                    onClick={() => setTutorialGuideOpen(true)}
-                  >
-                    {tutorial.title}
-                  </button>
-                </div>
-              ) : null}
-
-              <DigitPad
-                activeDigit={activeDigit}
-                mode={state.focus.digitMode}
-                state={state}
-                onDigitClick={handleDigitClick}
-                onModeChange={handleDigitModeChange}
-              />
-            </div>
+            <DigitPad
+              state={state}
+              onDigitClick={handleDigitClick}
+              onClear={() => dispatch({ type: "clearCell" })}
+            />
           </aside>
         </div>
       </main>
-
-      <HintModal
-        hint={state.pendingHint}
-        onClose={() => dispatch({ type: "dismissHint" })}
-        onApply={() => dispatch({ type: "applyHint" })}
-      />
-
-      <TutorialPanel
-        open={tutorialGuideOpen}
-        state={state}
-        onClose={() => setTutorialGuideOpen(false)}
-        onOpenTutorialMenu={() => {
-          setTutorialGuideOpen(false);
-          setTutorialPickerOpen(true);
-        }}
-        onRestartTutorial={(id) => {
-          startTutorial(id);
-          setTutorialGuideOpen(false);
-        }}
-      />
-
-      <TutorialPickerModal
-        activeTutorialId={state.tutorialId}
-        open={tutorialPickerOpen}
-        onClose={() => setTutorialPickerOpen(false)}
-        onStartTutorial={handleStartTutorial}
-      />
     </div>
   );
 }
