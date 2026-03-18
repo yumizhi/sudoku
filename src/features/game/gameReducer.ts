@@ -21,6 +21,7 @@ type GameAction =
   | { type: "replaceState"; state: GameState }
   | { type: "tick" }
   | { type: "selectCell"; row: number; col: number }
+  | { type: "clearSelection" }
   | { type: "moveSelection"; deltaRow: number; deltaCol: number }
   | { type: "toggleNoteMode"; forceValue?: boolean }
   | { type: "clearFocus" }
@@ -323,6 +324,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         selected: { row: action.row, col: action.col },
         focusDigit: state.focusScope === "global" ? state.focusDigit : null,
         focusScope: state.focusScope === "global" ? state.focusScope : null
+      };
+
+    case "clearSelection":
+      return {
+        ...state,
+        selected: null,
+        focusDigit: null,
+        focusScope: null
       };
 
     case "moveSelection": {

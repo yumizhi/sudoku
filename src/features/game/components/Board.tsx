@@ -12,6 +12,7 @@ import type { GameState } from "../types";
 interface BoardProps {
   state: GameState;
   onSelectCell: (row: number, col: number) => void;
+  suppressSelectionHighlight?: boolean;
 }
 
 function makeCellAriaLabel(state: GameState, row: number, col: number): string {
@@ -42,7 +43,11 @@ function renderNotes(notes: Digit[]): JSX.Element {
   );
 }
 
-export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
+export function Board({
+  state,
+  onSelectCell,
+  suppressSelectionHighlight = false
+}: BoardProps): JSX.Element {
   const conflicts = calculateConflicts(state.board);
   const selected = state.selected;
   const selectedValue = selected ? state.board[selected.row][selected.col] : 0;
@@ -54,7 +59,7 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
     !state.fixed[selected.row][selected.col] &&
     selectedValue === 0;
   const hasGlobalDigitFocus = hasDigitFocus && state.focusScope === "global";
-  const hasCellLineFocus = !hasDigitFocus && selectedValue !== 0;
+  const hasCellLineFocus = !suppressSelectionHighlight && !hasDigitFocus && selectedValue !== 0;
   const occupiedRows = new Set<number>();
   const occupiedCols = new Set<number>();
   const occupiedBoxes = new Set<string>();
@@ -99,7 +104,10 @@ export function Board({ state, onSelectCell }: BoardProps): JSX.Element {
               !isFixed &&
               value !== 0 &&
               value !== state.solution[row][col];
-            const isRelated = selected !== null && isPeer(selected.row, selected.col, row, col);
+            const isRelated =
+              selected !== null &&
+              (((hasCellLineFocus && !suppressSelectionHighlight) || hasLocalDigitPreview) &&
+                isPeer(selected.row, selected.col, row, col));
             const isSameValue = hasCellLineFocus && value !== 0 && value === selectedValue;
             const candidateMatch =
               hasGlobalDigitFocus &&

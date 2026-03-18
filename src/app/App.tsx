@@ -29,10 +29,16 @@ export default function App(): JSX.Element {
   const tutorial = getTutorialById(state.tutorialId);
   const activeObservedDigit =
     state.focusScope === "global" && digitPadMode === "observe" ? state.focusDigit : null;
+  const selectedDigit = state.selected ? state.board[state.selected.row][state.selected.col] : 0;
 
   function handleDigitClick(digit: Digit): void {
     if (digitPadMode === "observe") {
       dispatch({ type: "toggleGlobalInspect", digit });
+      return;
+    }
+
+    if (selectedDigit !== 0 && selectedDigit === digit) {
+      dispatch({ type: "clearSelection" });
       return;
     }
 
@@ -107,6 +113,7 @@ export default function App(): JSX.Element {
             <div className="flex min-h-0 flex-1 items-center justify-center">
               <Board
                 state={state}
+                suppressSelectionHighlight={digitPadMode === "observe"}
                 onSelectCell={(row, col) => dispatch({ type: "selectCell", row, col })}
               />
             </div>

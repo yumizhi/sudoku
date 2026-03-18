@@ -55,4 +55,13 @@ describe("gameReducer", () => {
     expect(moved.focusScope).toBe("global");
     expect(moved.focusDigit).toBe(5);
   });
+
+  it("clears selection and focus when requested", () => {
+    const state = makeState();
+    const next = gameReducer(state, { type: "clearSelection" });
+
+    expect(next.selected).toBeNull();
+    expect(next.focusDigit).toBeNull();
+    expect(next.focusScope).toBeNull();
+  });
 });
