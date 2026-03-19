@@ -4,6 +4,13 @@
 
 :root {
   color-scheme: light;
+  --sudoku-user-digit-rgb: 77 0 153;
+  --sudoku-user-digit: rgb(var(--sudoku-user-digit-rgb));
+  --sudoku-user-digit-muted: rgba(var(--sudoku-user-digit-rgb), 0.08);
+  --sudoku-user-digit-soft: rgba(var(--sudoku-user-digit-rgb), 0.14);
+  --sudoku-user-digit-strong: rgba(var(--sudoku-user-digit-rgb), 0.2);
+  --sudoku-user-digit-ring: rgba(var(--sudoku-user-digit-rgb), 0.56);
+  --sudoku-user-digit-shadow: rgba(var(--sudoku-user-digit-rgb), 0.28);
 }
 
 @layer base {

@@ -115,6 +115,16 @@ export function createGameStateFromPayload(payload: GameLoadPayload): GameState 
 
 function clickCellState(state: GameState, row: number, col: number): GameState {
   const value = state.board[row][col];
+  const clickedSameCell = state.selectedCell?.row === row && state.selectedCell?.col === col;
+
+  if (value !== 0 && clickedSameCell && state.highlightedDigit === value) {
+    return {
+      ...state,
+      selectedCell: null,
+      highlightedDigit: null
+    };
+  }
+
   return {
     ...state,
     selectedCell: { row, col },

@@ -41,8 +41,8 @@ describe("gameReducer", () => {
     expect(state.highlightedDigit).toBe(3);
 
     state = gameReducer(state, { type: "clickCell", row: 0, col: 1 });
-    expect(state.selectedCell).toEqual({ row: 0, col: 1 });
-    expect(state.highlightedDigit).toBe(3);
+    expect(state.selectedCell).toBeNull();
+    expect(state.highlightedDigit).toBeNull();
   });
 
   it("clicking an empty cell clears any previous digit highlight", () => {
