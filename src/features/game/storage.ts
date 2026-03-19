@@ -14,6 +14,13 @@ interface PersistedGameV5 {
   status: "playing" | "won";
 }
 
+interface PersistedGameV6 extends Omit<PersistedGameV5, "version"> {
+  version: 6;
+  showPeerHighlights: boolean;
+}
+
+type PersistedGame = PersistedGameV5 | PersistedGameV6;
+
 function isDifficulty(value: unknown): value is Difficulty {
   return value === "easy" || value === "medium" || value === "hard";
 }
@@ -39,13 +46,15 @@ export function loadPersistedGame(): GameLoadPayload | null {
       return null;
     }
 
-    const parsed = JSON.parse(raw) as PersistedGameV5;
+    const parsed = JSON.parse(raw) as PersistedGame;
     const puzzle = gridFromString(parsed.puzzle, true);
     const solution = gridFromString(parsed.solution, false);
     const board = gridFromString(parsed.board, true);
+    const showPeerHighlights =
+      parsed.version === 6 ? parsed.showPeerHighlights : parsed.version === 5 ? true : null;
 
     if (
-      parsed.version !== 5 ||
+      (parsed.version !== 5 && parsed.version !== 6) ||
       !isDifficulty(parsed.difficulty) ||
       !Number.isInteger(parsed.seed) ||
       parsed.seed < 1 ||
@@ -55,7 +64,8 @@ export function loadPersistedGame(): GameLoadPayload | null {
       !isCell(parsed.selectedCell) ||
       !Number.isInteger(parsed.elapsedSeconds) ||
       parsed.elapsedSeconds < 0 ||
-      (parsed.status !== "playing" && parsed.status !== "won")
+      (parsed.status !== "playing" && parsed.status !== "won") ||
+      typeof showPeerHighlights !== "boolean"
     ) {
       return null;
     }
@@ -67,6 +77,7 @@ export function loadPersistedGame(): GameLoadPayload | null {
       solution,
       board,
       selectedCell: parsed.selectedCell,
+      showPeerHighlights,
       elapsedSeconds: parsed.elapsedSeconds,
       status: parsed.status
     };
@@ -78,14 +89,15 @@ export function loadPersistedGame(): GameLoadPayload | null {
 
 export function savePersistedGame(state: GameState): void {
   try {
-    const payload: PersistedGameV5 = {
-      version: 5,
+    const payload: PersistedGameV6 = {
+      version: 6,
       difficulty: state.difficulty,
       seed: state.seed,
       puzzle: gridToString(state.puzzle),
       solution: gridToString(state.solution),
       board: gridToString(state.board),
       selectedCell: state.selectedCell,
+      showPeerHighlights: state.showPeerHighlights,
       elapsedSeconds: state.elapsedSeconds,
       status: state.status === "won" ? "won" : "playing"
     };
@@ -108,6 +120,7 @@ export function clonePersistedBoard(state: GameState): GameLoadPayload {
     solution: cloneGrid(state.solution),
     board: cloneGrid(state.board),
     selectedCell: state.selectedCell,
+    showPeerHighlights: state.showPeerHighlights,
     elapsedSeconds: state.elapsedSeconds,
     status: state.status === "won" ? "won" : "playing"
   };

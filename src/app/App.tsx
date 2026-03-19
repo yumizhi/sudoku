@@ -12,48 +12,28 @@ import { DigitPad } from "../features/game/components/DigitPad";
 import { useSudokuGame } from "../features/game/useSudokuGame";
 
 function useBoardSize(): {
-  shellRef: RefObject<HTMLDivElement>;
-  headerRef: RefObject<HTMLElement>;
-  controlsRef: RefObject<HTMLElement>;
+  boardAreaRef: RefObject<HTMLDivElement>;
   boardSize: number;
 } {
-  const shellRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLElement>(null);
-  const controlsRef = useRef<HTMLElement>(null);
+  const boardAreaRef = useRef<HTMLDivElement>(null);
   const [boardSize, setBoardSize] = useState(320);
 
   useEffect(() => {
-    const shell = shellRef.current;
-    const header = headerRef.current;
-    const controls = controlsRef.current;
-    if (!shell) {
+    const boardArea = boardAreaRef.current;
+    if (!boardArea) {
       return;
     }
 
     const calculate = (): void => {
-      const shellRect = shell.getBoundingClientRect();
-      const headerHeight = header?.getBoundingClientRect().height ?? 0;
-      const controlsRect = controls?.getBoundingClientRect();
-      const controlsWidth = controlsRect?.width ?? 0;
-      const controlsHeight = controlsRect?.height ?? 0;
-      const desktop = window.matchMedia("(min-width: 1024px)").matches;
-      const gap = desktop ? 16 : 12;
-
-      const widthLimit = desktop ? shellRect.width - controlsWidth - gap : shellRect.width;
-      const heightLimit = desktop
-        ? shellRect.height - headerHeight - gap
-        : shellRect.height - headerHeight - controlsHeight - gap * 2;
-
-      const nextSize = Math.max(220, Math.floor(Math.min(widthLimit, heightLimit)));
+      const rect = boardArea.getBoundingClientRect();
+      const nextSize = Math.max(0, Math.floor(Math.min(rect.width, rect.height)));
       setBoardSize(nextSize);
     };
 
     calculate();
 
     const observer = new ResizeObserver(calculate);
-    observer.observe(shell);
-    if (header) observer.observe(header);
-    if (controls) observer.observe(controls);
+    observer.observe(boardArea);
     window.addEventListener("resize", calculate);
 
     return () => {
@@ -62,12 +42,12 @@ function useBoardSize(): {
     };
   }, []);
 
-  return { shellRef, headerRef, controlsRef, boardSize };
+  return { boardAreaRef, boardSize };
 }
 
 export default function App(): JSX.Element {
   const { state, dispatch, startNewGame } = useSudokuGame();
-  const { shellRef, headerRef, controlsRef, boardSize } = useBoardSize();
+  const { boardAreaRef, boardSize } = useBoardSize();
 
   const filledCount = getFilledCount(state);
   const selectionLabel = getSelectedCellLabel(state);
@@ -88,6 +68,7 @@ export default function App(): JSX.Element {
 
     return "选择空格后，可用键盘或下方数字键填入。";
   }, [state.message.text, state.status]);
+  const peerHighlightLabel = state.showPeerHighlights ? "已开启" : "已关闭";
 
   function handleDigitClick(digit: Digit): void {
     dispatch({ type: "inputDigit", digit });
@@ -95,11 +76,11 @@ export default function App(): JSX.Element {
 
   return (
     <div className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(148,163,184,0.16),transparent_24%),linear-gradient(180deg,#f8fafc_0%,#e2e8f0_100%)]">
-      <main ref={shellRef} className="mx-auto flex h-full w-full max-w-6xl flex-col gap-3 p-3 sm:gap-4 sm:p-4">
-        <header ref={headerRef} className="panel-surface flex flex-wrap items-center justify-between gap-2.5 px-3 py-3 sm:px-4">
+      <main className="mx-auto grid h-full w-full max-w-[92rem] grid-rows-[auto_minmax(0,1fr)] gap-3 p-3 sm:gap-4 sm:p-4">
+        <header className="panel-surface flex flex-col gap-3 px-3 py-3 sm:px-4 sm:py-3.5 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-lg font-semibold tracking-tight text-slate-950 sm:text-xl">Sudoku</h1>
+              <h1 className="text-lg font-semibold tracking-tight text-slate-950 sm:text-xl">数独</h1>
               <span className={["rounded-full border px-2.5 py-1 text-xs font-semibold", statusToneClass].join(" ")}>
                 {statusLabel}
               </span>
@@ -107,7 +88,7 @@ export default function App(): JSX.Element {
                 {formatTime(state.elapsedSeconds)}
               </span>
             </div>
-            <p className="mt-1 truncate text-sm text-slate-600">{headerMessage}</p>
+            <p className="mt-1 text-sm text-slate-600 md:truncate">{headerMessage}</p>
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -151,28 +132,52 @@ export default function App(): JSX.Element {
           </div>
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:gap-4">
-          <section className="panel-surface flex min-h-0 flex-1 items-center justify-center p-2.5 sm:p-4">
-            <Board
-              size={boardSize}
-              state={state}
-              onSelectCell={(row, col) => dispatch({ type: "clickCell", row, col })}
-            />
+        <div className="grid min-h-0 grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_clamp(15rem,28vw,18rem)] md:gap-4">
+          <section className="panel-surface min-h-0 p-2 sm:p-3 lg:p-4">
+            <div ref={boardAreaRef} className="flex h-full w-full items-center justify-center">
+              <Board
+                size={boardSize}
+                state={state}
+                onSelectCell={(row, col) => dispatch({ type: "clickCell", row, col })}
+              />
+            </div>
           </section>
 
-          <aside
-            ref={controlsRef}
-            className="panel-surface flex shrink-0 flex-col gap-3 px-3 py-3 sm:px-4 lg:w-[18.5rem] lg:py-4"
-          >
-            <div className="grid grid-cols-2 gap-2 text-sm text-slate-600">
-              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
-                <div className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">选中</div>
-                <div className="mt-1 font-semibold text-slate-900">{selectionLabel}</div>
+          <aside className="panel-surface flex min-h-0 flex-col gap-3 px-3 py-3 sm:px-4 sm:py-4">
+            <div className="rounded-[1.4rem] border border-slate-200 bg-white/95 px-3 py-3 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">选中</div>
+                  <div className="mt-1 truncate text-base font-semibold text-slate-950">{selectionLabel}</div>
+                  <div className="mt-1 text-xs text-slate-500">键盘数字、方向键与点按都可用。</div>
+                </div>
+                <span className="shrink-0 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-cyan-700">
+                  同数字自动高亮
+                </span>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
-                <div className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">输入</div>
-                <div className="mt-1 font-semibold text-slate-900">键盘 + 点按</div>
-              </div>
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={state.showPeerHighlights}
+                className="mt-3 flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left transition hover:border-sky-200 hover:bg-sky-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/70"
+                onClick={() => dispatch({ type: "togglePeerHighlights" })}
+              >
+                <span>
+                  <span className="block text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">占线高亮</span>
+                  <span className="mt-1 block text-sm font-semibold text-slate-900">行 / 列 / 宫辅助定位</span>
+                </span>
+                <span
+                  className={[
+                    "rounded-full px-2.5 py-1 text-xs font-semibold",
+                    state.showPeerHighlights
+                      ? "bg-sky-600 text-white shadow-[0_10px_20px_-16px_rgba(2,132,199,0.95)]"
+                      : "border border-slate-200 bg-white text-slate-600"
+                  ].join(" ")}
+                >
+                  {peerHighlightLabel}
+                </span>
+              </button>
             </div>
 
             <DigitPad

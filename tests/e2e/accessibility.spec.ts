@@ -1,9 +1,23 @@
 import { expect, test } from "@playwright/test";
 
-test("opens hint explanation as a dialog before applying the move", async ({ page }) => {
+test("supports keyboard navigation and exposes the peer-highlight switch", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "提示" }).click();
-  await expect(page.getByRole("dialog", { name: "提示解释" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "应用这一步" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "新游戏" })).toBeEnabled();
+
+  const initialCell = page.locator('[role="gridcell"][aria-selected="true"]').first();
+  await expect(initialCell).toBeFocused();
+  const initialColumn = Number(await initialCell.getAttribute("aria-colindex"));
+
+  await page.keyboard.press("ArrowRight");
+  const nextCell = page.locator('[role="gridcell"][aria-selected="true"]').first();
+  await expect(nextCell).toBeFocused();
+  expect(Number(await nextCell.getAttribute("aria-colindex"))).not.toBe(initialColumn);
+
+  const peerSwitch = page.getByRole("switch", { name: /占线高亮/ });
+  await expect(peerSwitch).toHaveAttribute("aria-checked", "true");
+
+  await peerSwitch.click();
+  await expect(peerSwitch).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByText("已关闭占线高亮。")).toBeVisible();
 });

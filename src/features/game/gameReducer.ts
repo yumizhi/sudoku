@@ -12,6 +12,7 @@ export type GameAction =
   | { type: "moveSelection"; deltaRow: number; deltaCol: number }
   | { type: "inputDigit"; digit: Digit }
   | { type: "clearCell" }
+  | { type: "togglePeerHighlights" }
   | { type: "restartGame" }
   | { type: "clearMessage" };
 
@@ -58,19 +59,6 @@ function withSolvedState(state: GameState): GameState {
   };
 }
 
-function createSelectionState(
-  state: GameState,
-  cell: CellPosition | null,
-  highlightedDigit: Digit | null
-): GameState {
-  return {
-    ...state,
-    selectedCell: cell,
-    highlightedDigit,
-    message: state.message.text ? state.message : createMessage("")
-  };
-}
-
 export function formatTime(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -93,6 +81,7 @@ export function createInitialGameState(): GameState {
     fixed: makeBoolGrid(false),
     selectedCell: null,
     highlightedDigit: null,
+    showPeerHighlights: true,
     lastFilledCell: null,
     elapsedSeconds: 0,
     status: "idle",
@@ -103,6 +92,8 @@ export function createInitialGameState(): GameState {
 
 export function createGameStateFromPayload(payload: GameLoadPayload): GameState {
   const board = payload.board ? cloneGrid(payload.board) : cloneGrid(payload.puzzle);
+  const selectedCell = payload.selectedCell ?? findFirstEditableCell(payload.puzzle, board);
+  const selectedValue = selectedCell ? board[selectedCell.row][selectedCell.col] : 0;
 
   return {
     difficulty: payload.difficulty,
@@ -111,8 +102,9 @@ export function createGameStateFromPayload(payload: GameLoadPayload): GameState 
     solution: cloneGrid(payload.solution),
     board,
     fixed: deriveFixedGrid(payload.puzzle),
-    selectedCell: payload.selectedCell ?? findFirstEditableCell(payload.puzzle, board),
-    highlightedDigit: null,
+    selectedCell,
+    highlightedDigit: selectedValue === 0 ? null : (selectedValue as Digit),
+    showPeerHighlights: payload.showPeerHighlights ?? true,
     lastFilledCell: null,
     elapsedSeconds: payload.elapsedSeconds ?? 0,
     status: payload.status ?? "playing",
@@ -123,28 +115,10 @@ export function createGameStateFromPayload(payload: GameLoadPayload): GameState 
 
 function clickCellState(state: GameState, row: number, col: number): GameState {
   const value = state.board[row][col];
-  const clickedSameCell = state.selectedCell?.row === row && state.selectedCell?.col === col;
-
-  if (value !== 0) {
-    if (clickedSameCell && state.highlightedDigit === value) {
-      return {
-        ...state,
-        selectedCell: null,
-        highlightedDigit: null
-      };
-    }
-
-    return {
-      ...state,
-      selectedCell: { row, col },
-      highlightedDigit: value
-    };
-  }
-
   return {
     ...state,
     selectedCell: { row, col },
-    highlightedDigit: null
+    highlightedDigit: value === 0 ? null : (value as Digit)
   };
 }
 
@@ -187,7 +161,7 @@ function inputDigitState(state: GameState, digit: Digit): GameState {
     ...state,
     board,
     selectedCell: cell,
-    highlightedDigit: null,
+    highlightedDigit: digit,
     lastFilledCell: cell,
     message: createMessage(`已填入 ${digit}。`)
   });
@@ -306,6 +280,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "clearCell":
       return clearCellState(state);
+
+    case "togglePeerHighlights":
+      return {
+        ...state,
+        showPeerHighlights: !state.showPeerHighlights,
+        message: createMessage(state.showPeerHighlights ? "已关闭占线高亮。" : "已开启占线高亮。")
+      };
 
     case "restartGame":
       return restartGameState(state);

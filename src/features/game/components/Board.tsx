@@ -23,32 +23,41 @@ function getCellClasses(
   value: number,
   fixed: boolean,
   highlight: ReturnType<typeof computeHighlights>[number][number]
-): string {
-  let background = fixed ? "bg-slate-100 text-slate-900" : "bg-white text-slate-900";
-  let shadow = "";
+): { className: string; boxShadow?: string } {
+  let background = fixed ? "bg-slate-50" : "bg-white";
+  let text = "text-slate-900";
+  let boxShadow = "";
 
   if (highlight.peer) {
-    background = fixed ? "bg-slate-100 text-slate-900" : "bg-sky-50 text-slate-900";
+    background = fixed ? "bg-slate-100" : "bg-sky-50/90";
+    boxShadow = "inset 0 0 0 1px rgba(125, 211, 252, 0.38)";
   }
 
   if (highlight.sameDigit) {
-    background = value === 0 ? "bg-sky-100 text-slate-900" : "bg-sky-200 text-slate-950";
+    background = fixed ? "bg-cyan-100" : "bg-cyan-200/80";
+    text = "text-slate-950";
+    boxShadow = "inset 0 0 0 2px rgba(8, 145, 178, 0.18), 0 10px 18px -16px rgba(8, 145, 178, 0.92)";
   }
 
   if (highlight.lastFilled && !highlight.selected) {
-    shadow = "shadow-[inset_0_0_0_2px_rgba(14,165,233,0.15)]";
+    boxShadow = "inset 0 0 0 2px rgba(14, 165, 233, 0.24)";
   }
 
   if (highlight.selected) {
-    background = value === 0 ? "bg-sky-100 text-slate-950" : "bg-sky-200 text-slate-950";
-    shadow = "ring-2 ring-inset ring-sky-600";
+    background = value === 0 ? "bg-sky-100" : "bg-sky-200/90";
+    text = "text-slate-950";
+    boxShadow =
+      "inset 0 0 0 2px rgba(3, 105, 161, 0.28), 0 0 0 1px rgba(2, 132, 199, 0.72), 0 18px 28px -24px rgba(2, 132, 199, 0.95)";
   }
 
-  return [
-    "grid aspect-square place-items-center border border-slate-300 font-semibold leading-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/70",
-    background,
-    shadow
-  ].join(" ");
+  return {
+    className: [
+      "grid aspect-square place-items-center border border-slate-300 font-semibold leading-none transition-[background-color,box-shadow,color] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/70",
+      background,
+      text
+    ].join(" "),
+    boxShadow
+  };
 }
 
 export function Board({ state, size, onSelectCell }: BoardProps): JSX.Element {
@@ -56,6 +65,7 @@ export function Board({ state, size, onSelectCell }: BoardProps): JSX.Element {
     board: state.board,
     selectedCell: state.selectedCell,
     highlightedDigit: state.highlightedDigit,
+    showPeerHighlights: state.showPeerHighlights,
     lastFilledCell: state.lastFilledCell
   });
 
@@ -80,6 +90,7 @@ export function Board({ state, size, onSelectCell }: BoardProps): JSX.Element {
           rowValues.map((value, col) => {
             const isSelected = state.selectedCell?.row === row && state.selectedCell?.col === col;
             const highlight = highlights[row][col];
+            const presentation = getCellClasses(value, state.fixed[row][col], highlight);
 
             return (
               <button
@@ -93,10 +104,11 @@ export function Board({ state, size, onSelectCell }: BoardProps): JSX.Element {
                 tabIndex={isSelected ? 0 : -1}
                 data-row={row}
                 data-col={col}
-                className={getCellClasses(value, state.fixed[row][col], highlight)}
+                className={presentation.className}
                 disabled={state.generating}
                 style={{
-                  fontSize: `clamp(1rem, ${Math.max(size * 0.045, 1)}px, 1.85rem)`,
+                  fontSize: `clamp(1.02rem, ${Math.max(size * 0.05, 1)}px, 2rem)`,
+                  boxShadow: presentation.boxShadow,
                   borderTopWidth: row === 0 || row % 3 === 0 ? "2px" : "1px",
                   borderLeftWidth: col === 0 || col % 3 === 0 ? "2px" : "1px",
                   borderRightWidth: (col + 1) % 3 === 0 ? "2px" : "1px",

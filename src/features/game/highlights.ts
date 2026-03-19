@@ -11,6 +11,7 @@ export interface HighlightInput {
   board: Grid;
   selectedCell: CellPosition | null;
   highlightedDigit: Digit | null;
+  showPeerHighlights: boolean;
   lastFilledCell: CellPosition | null;
 }
 
@@ -18,6 +19,7 @@ export function computeHighlights({
   board,
   selectedCell,
   highlightedDigit,
+  showPeerHighlights,
   lastFilledCell
 }: HighlightInput): CellHighlight[][] {
   return Array.from({ length: 9 }, (_, row) =>
@@ -31,7 +33,11 @@ export function computeHighlights({
 
       return {
         selected: selectedCell?.row === row && selectedCell?.col === col,
-        peer: !!selectedCell && !((selectedCell.row === row && selectedCell.col === col)) && (inSameRow || inSameCol || inSameBox),
+        peer:
+          showPeerHighlights &&
+          !!selectedCell &&
+          !(selectedCell.row === row && selectedCell.col === col) &&
+          (inSameRow || inSameCol || inSameBox),
         sameDigit: highlightedDigit !== null && board[row][col] === highlightedDigit,
         lastFilled: lastFilledCell?.row === row && lastFilledCell?.col === col
       };

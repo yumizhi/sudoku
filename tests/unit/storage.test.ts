@@ -8,7 +8,7 @@ describe("storage", () => {
     window.localStorage.clear();
   });
 
-  it("loads a persisted v5 game snapshot", () => {
+  it("loads a persisted v5 game snapshot and defaults peer highlighting on", () => {
     const puzzle = gridFromString(
       "034678912672195348198342567859761423426853791713924856961537284287419635345286179",
       true
@@ -40,10 +40,11 @@ describe("storage", () => {
     const restored = loadPersistedGame();
     expect(restored?.difficulty).toBe("medium");
     expect(restored?.selectedCell).toEqual({ row: 0, col: 0 });
+    expect(restored?.showPeerHighlights).toBe(true);
     expect(restored?.elapsedSeconds).toBe(18);
   });
 
-  it("saves the current board using the v5 payload", () => {
+  it("saves the current board using the v6 payload", () => {
     const puzzle = gridFromString(
       "034678912672195348198342567859761423426853791713924856961537284287419635345286179",
       true
@@ -64,6 +65,7 @@ describe("storage", () => {
       solution,
       board: solution,
       selectedCell: { row: 0, col: 0 },
+      showPeerHighlights: false,
       elapsedSeconds: 42,
       status: "won"
     });
@@ -75,11 +77,13 @@ describe("storage", () => {
       status: string;
       elapsedSeconds: number;
       selectedCell: { row: number; col: number } | null;
+      showPeerHighlights: boolean;
     } | null;
 
-    expect(payload?.version).toBe(5);
+    expect(payload?.version).toBe(6);
     expect(payload?.status).toBe("won");
     expect(payload?.elapsedSeconds).toBe(42);
     expect(payload?.selectedCell).toEqual({ row: 0, col: 0 });
+    expect(payload?.showPeerHighlights).toBe(false);
   });
 });

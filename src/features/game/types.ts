@@ -23,6 +23,7 @@ export interface GameState {
   fixed: BoolGrid;
   selectedCell: CellPosition | null;
   highlightedDigit: Digit | null;
+  showPeerHighlights: boolean;
   lastFilledCell: CellPosition | null;
   elapsedSeconds: number;
   status: GameStatus;
@@ -37,6 +38,7 @@ export interface GameLoadPayload {
   solution: Grid;
   board?: Grid;
   selectedCell?: CellPosition | null;
+  showPeerHighlights?: boolean;
   elapsedSeconds?: number;
   status?: Extract<GameStatus, "playing" | "won">;
   message?: MessageState;
