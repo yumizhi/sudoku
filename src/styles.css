@@ -1,20 +1,29 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: light;
-  --sudoku-accent-rgb: 14 116 217;
-  --sudoku-accent-strong-rgb: 30 64 175;
-  --sudoku-text-rgb: 15 23 42;
-  --sudoku-muted-rgb: 71 85 105;
-  --sudoku-border-rgb: 203 213 225;
-  --sudoku-paper-rgb: 250 247 241;
-  --sudoku-duration-fast: 150ms;
-  --sudoku-duration-base: 220ms;
-  --sudoku-duration-slow: 320ms;
-  --sudoku-ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --sudoku-ease-emphasis: cubic-bezier(0.22, 1, 0.36, 1);
+  --atelier-surface: 247 249 251;
+  --atelier-surface-low: 242 244 246;
+  --atelier-surface-high: 230 232 234;
+  --atelier-surface-highest: 224 227 229;
+  --atelier-paper: 255 255 255;
+  --atelier-primary: 36 56 156;
+  --atelier-primary-container: 63 81 181;
+  --atelier-primary-fixed: 222 224 255;
+  --atelier-primary-fixed-dim: 186 195 255;
+  --atelier-ink: 25 28 30;
+  --atelier-muted: 69 70 82;
+  --atelier-outline: 197 197 212;
+  --atelier-error: 186 26 26;
+  --atelier-duration-fast: 160ms;
+  --atelier-duration-base: 240ms;
+  --atelier-duration-slow: 340ms;
+  --atelier-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --atelier-ease-emphasis: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @layer base {
@@ -30,25 +39,28 @@
 
   html,
   body {
-    @apply overflow-x-hidden bg-slate-100;
+    @apply overflow-x-hidden;
   }
 
   body {
-    @apply font-sans text-slate-900 antialiased;
+    @apply antialiased;
+    font-family: "Plus Jakarta Sans", "Avenir Next", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+    color: rgb(var(--atelier-ink));
     background:
-      radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 28%),
-      linear-gradient(180deg, rgba(var(--sudoku-paper-rgb), 0.92), rgba(241, 245, 249, 0.94));
+      radial-gradient(circle at top left, rgba(var(--atelier-primary), 0.08), transparent 24%),
+      radial-gradient(circle at top right, rgba(var(--atelier-primary-container), 0.06), transparent 22%),
+      linear-gradient(180deg, rgba(var(--atelier-surface), 0.98), rgba(240, 243, 246, 1));
   }
 
   button,
   select {
     @apply touch-manipulation;
     transition:
-      background-color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
-      border-color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
-      box-shadow var(--sudoku-duration-base) var(--sudoku-ease-emphasis),
-      color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
-      transform var(--sudoku-duration-fast) var(--sudoku-ease-standard);
+      background-color var(--atelier-duration-fast) var(--atelier-ease-standard),
+      border-color var(--atelier-duration-fast) var(--atelier-ease-standard),
+      box-shadow var(--atelier-duration-base) var(--atelier-ease-emphasis),
+      color var(--atelier-duration-fast) var(--atelier-ease-standard),
+      transform var(--atelier-duration-fast) var(--atelier-ease-standard);
   }
 
   button:disabled,
@@ -57,168 +69,277 @@
   }
 
   ::selection {
-    background: rgba(14, 165, 233, 0.2);
+    background: rgba(var(--atelier-primary), 0.18);
   }
 }
 
 @layer components {
   .panel-surface {
-    @apply rounded-[1.6rem] border border-white/80 bg-white/85 shadow-[0_24px_60px_-34px_rgba(15,23,42,0.36)] backdrop-blur;
+    @apply rounded-[1.75rem] backdrop-blur;
+    background:
+      linear-gradient(180deg, rgba(var(--atelier-paper), 0.8), rgba(var(--atelier-paper), 0.66));
+    box-shadow:
+      0 20px 40px rgba(25, 28, 30, 0.06),
+      inset 0 0 0 1px rgba(var(--atelier-outline), 0.16);
     transition:
-      border-color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
-      box-shadow var(--sudoku-duration-base) var(--sudoku-ease-emphasis),
-      background-color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
-      transform var(--sudoku-duration-base) var(--sudoku-ease-emphasis);
+      box-shadow var(--atelier-duration-base) var(--atelier-ease-emphasis),
+      background-color var(--atelier-duration-fast) var(--atelier-ease-standard),
+      transform var(--atelier-duration-base) var(--atelier-ease-emphasis);
   }
 
   .panel-muted {
-    @apply rounded-[1.2rem] border border-slate-200/85 bg-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)];
-  }
-
-  .control-button {
-    @apply inline-flex min-h-[2.875rem] items-center justify-center rounded-[1.15rem] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.45)] hover:border-sky-200 hover:bg-sky-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/35 active:translate-y-[1px];
-  }
-
-  .control-button-primary {
-    @apply inline-flex min-h-[2.875rem] items-center justify-center rounded-[1.15rem] border border-sky-700 bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_28px_-22px_rgba(3,105,161,0.75)] hover:border-sky-800 hover:bg-sky-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/35 active:translate-y-[1px];
-  }
-
-  .status-badge {
-    @apply inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold shadow-[0_10px_24px_-22px_rgba(15,23,42,0.45)];
-  }
-
-  .toggle-track {
-    @apply relative flex h-7 w-12 items-center rounded-full border border-slate-300 bg-slate-200/80 px-1 shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)];
-    transition:
-      background-color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
-      border-color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
-      box-shadow var(--sudoku-duration-base) var(--sudoku-ease-emphasis);
-  }
-
-  .toggle-track.is-on {
-    @apply border-sky-200 bg-sky-100 shadow-[0_10px_24px_-20px_rgba(2,132,199,0.7),inset_0_1px_0_rgba(255,255,255,0.75)];
-  }
-
-  .toggle-thumb {
-    @apply block h-5 w-5 rounded-full bg-white shadow-[0_6px_16px_-10px_rgba(15,23,42,0.45)];
-    transform: translateX(0);
-    transition:
-      transform var(--sudoku-duration-base) var(--sudoku-ease-emphasis),
-      background-color var(--sudoku-duration-fast) var(--sudoku-ease-standard);
-  }
-
-  .toggle-track.is-on .toggle-thumb {
-    @apply bg-sky-600;
-    transform: translateX(1.2rem);
+    @apply rounded-[1.2rem];
+    background:
+      linear-gradient(180deg, rgba(var(--atelier-surface-low), 0.94), rgba(var(--atelier-paper), 0.9));
+    box-shadow:
+      inset 0 0 0 1px rgba(var(--atelier-outline), 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.65);
   }
 
   .subtle-enter {
-    animation: panel-rise var(--sudoku-duration-slow) var(--sudoku-ease-emphasis) both;
+    animation: panel-rise var(--atelier-duration-slow) var(--atelier-ease-emphasis) both;
   }
 
-  .sudoku-board {
-    border-color: rgba(148, 163, 184, 0.82);
-    background:
-      linear-gradient(180deg, rgba(226, 232, 240, 0.92), rgba(203, 213, 225, 0.88));
+  .atelier-kicker {
+    color: rgba(var(--atelier-muted), 0.82);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .atelier-chip {
+    @apply inline-flex items-center rounded-full px-3 py-1;
+    background: rgba(var(--atelier-primary-fixed), 0.75);
+    color: rgb(var(--atelier-primary));
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .atelier-message {
+    @apply rounded-[1.25rem] px-4 py-3 text-sm leading-6;
+    background: rgba(var(--atelier-primary-fixed), 0.56);
+    box-shadow: inset 0 0 0 1px rgba(var(--atelier-primary), 0.08);
+    color: rgb(var(--atelier-primary));
+  }
+
+  .atelier-message[data-tone="warn"] {
+    background: rgba(255, 218, 214, 0.78);
+    color: rgb(var(--atelier-error));
+  }
+
+  .atelier-message[data-tone="success"] {
+    background: rgba(223, 247, 231, 0.9);
+    color: rgb(26, 103, 67);
+  }
+
+  .atelier-progress-track {
+    @apply h-2 overflow-hidden rounded-full;
+    background: rgba(var(--atelier-primary), 0.08);
+  }
+
+  .atelier-progress-fill {
+    display: block;
+    height: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, rgb(var(--atelier-primary)), rgb(var(--atelier-primary-container)));
+    box-shadow: 0 8px 16px -10px rgba(var(--atelier-primary), 0.72);
+  }
+
+  .action-tile {
+    @apply flex flex-col items-center gap-2 rounded-[1.15rem] px-2 py-2.5 text-center focus:outline-none focus-visible:ring-2 active:translate-y-[1px];
+    color: rgba(var(--atelier-muted), 0.96);
+    background: transparent;
+  }
+
+  .action-tile__icon {
+    @apply grid h-12 w-12 place-items-center rounded-[1rem];
+    background: rgba(var(--atelier-surface-low), 0.98);
     box-shadow:
-      0 28px 64px -34px rgba(15, 23, 42, 0.46),
-      0 18px 34px -30px rgba(14, 116, 217, 0.38);
-    transition:
-      box-shadow var(--sudoku-duration-base) var(--sudoku-ease-emphasis),
-      transform var(--sudoku-duration-base) var(--sudoku-ease-emphasis);
+      inset 0 0 0 1px rgba(var(--atelier-outline), 0.12),
+      0 10px 20px -18px rgba(25, 28, 30, 0.4);
+  }
+
+  .action-tile__label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .action-tile:hover .action-tile__icon,
+  .action-tile:focus-visible .action-tile__icon {
+    background: rgba(var(--atelier-primary-fixed), 0.9);
+    color: rgb(var(--atelier-primary));
+  }
+
+  .action-tile[data-active="true"] .action-tile__icon,
+  .action-tile[data-primary="true"] .action-tile__icon {
+    background: linear-gradient(180deg, rgb(var(--atelier-primary)), rgb(var(--atelier-primary-container)));
+    color: rgba(var(--atelier-paper), 1);
+    box-shadow:
+      0 16px 24px -18px rgba(var(--atelier-primary), 0.85),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  }
+
+  .action-tile[data-active="true"] .action-tile__label,
+  .action-tile[data-primary="true"] .action-tile__label {
+    color: rgb(var(--atelier-primary));
+  }
+
+  .action-tile:focus-visible {
+    box-shadow: 0 0 0 3px rgba(var(--atelier-primary), 0.16);
   }
 
   .sudoku-cell {
-    --cell-bg: rgba(255, 255, 255, 0.96);
-    --cell-fg: rgb(var(--sudoku-accent-strong-rgb));
+    --cell-bg: rgba(var(--atelier-paper), 0.98);
+    --cell-fg: rgb(var(--atelier-primary-container));
     --cell-shadow: none;
-    --cell-overlay: none;
-    --cell-scale: 1;
+    --cell-translate: translateY(0);
 
-    @apply relative grid aspect-square place-items-center border font-semibold leading-none outline-none;
-    border-color: rgba(var(--sudoku-border-rgb), 0.84);
+    @apply relative grid aspect-square min-h-0 place-items-center rounded-[0.72rem] leading-none outline-none;
+    font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
     background-color: var(--cell-bg);
-    background-image: var(--cell-overlay);
     color: var(--cell-fg);
     box-shadow: var(--cell-shadow);
-    transform: translateZ(0) scale(var(--cell-scale));
+    transform: translateZ(0) var(--cell-translate);
     transition:
-      background-color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
-      background-image var(--sudoku-duration-fast) var(--sudoku-ease-standard),
-      color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
-      box-shadow var(--sudoku-duration-base) var(--sudoku-ease-emphasis),
-      transform var(--sudoku-duration-base) var(--sudoku-ease-emphasis);
+      background-color var(--atelier-duration-fast) var(--atelier-ease-standard),
+      color var(--atelier-duration-fast) var(--atelier-ease-standard),
+      box-shadow var(--atelier-duration-base) var(--atelier-ease-emphasis),
+      transform var(--atelier-duration-base) var(--atelier-ease-emphasis);
   }
 
   .sudoku-cell[data-fixed="true"] {
-    --cell-bg: rgba(248, 250, 252, 0.96);
-    --cell-fg: rgb(var(--sudoku-text-rgb));
+    --cell-bg: rgba(var(--atelier-paper), 1);
+    --cell-fg: rgb(var(--atelier-ink));
   }
 
-  .sudoku-cell[data-row-peer="true"] {
-    --cell-bg: rgba(var(--sudoku-accent-rgb), 0.05);
-    --cell-overlay: linear-gradient(180deg, rgba(var(--sudoku-accent-rgb), 0.02), rgba(var(--sudoku-accent-rgb), 0.075));
-  }
-
+  .sudoku-cell[data-row-peer="true"],
   .sudoku-cell[data-col-peer="true"] {
-    --cell-bg: rgba(var(--sudoku-accent-rgb), 0.05);
-    --cell-overlay: linear-gradient(90deg, rgba(var(--sudoku-accent-rgb), 0.02), rgba(var(--sudoku-accent-rgb), 0.075));
+    --cell-bg: rgba(var(--atelier-surface-highest), 0.96);
   }
 
   .sudoku-cell[data-box-peer="true"] {
-    --cell-shadow: inset 0 0 0 1px rgba(var(--sudoku-accent-rgb), 0.08);
+    --cell-bg: rgba(var(--atelier-surface-high), 0.92);
   }
 
   .sudoku-cell[data-box-peer="true"][data-row-peer="true"],
   .sudoku-cell[data-box-peer="true"][data-col-peer="true"] {
-    --cell-bg: rgba(var(--sudoku-accent-rgb), 0.068);
+    --cell-bg: rgba(var(--atelier-surface-highest), 1);
   }
 
   .sudoku-cell[data-same-digit="true"] {
-    --cell-bg: rgba(var(--sudoku-accent-rgb), 0.14);
-    --cell-overlay: none;
+    --cell-bg: rgba(var(--atelier-primary-fixed-dim), 0.64);
+    --cell-fg: rgb(var(--atelier-primary));
     --cell-shadow:
-      inset 0 0 0 1px rgba(var(--sudoku-accent-rgb), 0.16),
-      0 10px 18px -18px rgba(var(--sudoku-accent-rgb), 0.45);
+      inset 0 0 0 1px rgba(var(--atelier-primary), 0.08),
+      0 10px 18px -18px rgba(var(--atelier-primary), 0.35);
   }
 
   .sudoku-cell[data-last-filled="true"] {
-    --cell-shadow:
-      inset 0 0 0 1.5px rgba(var(--sudoku-accent-rgb), 0.24),
-      0 12px 18px -18px rgba(var(--sudoku-accent-rgb), 0.3);
+    --cell-shadow: inset 0 0 0 1px rgba(var(--atelier-primary), 0.18);
   }
 
   .sudoku-cell[data-selected="true"] {
-    --cell-bg: rgba(var(--sudoku-accent-rgb), 0.2);
-    --cell-fg: rgb(var(--sudoku-accent-strong-rgb));
-    --cell-overlay: none;
+    --cell-bg: rgba(var(--atelier-primary-fixed), 1);
+    --cell-fg: rgb(var(--atelier-primary));
     --cell-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.84),
-      inset 0 0 0 2px rgba(var(--sudoku-accent-rgb), 0.42),
-      0 16px 28px -20px rgba(var(--sudoku-accent-rgb), 0.52);
-    --cell-scale: 1.02;
+      inset 0 0 0 2px rgba(var(--atelier-primary), 0.9),
+      0 16px 28px -18px rgba(var(--atelier-primary), 0.42);
+    --cell-translate: translateY(-1px);
     z-index: 1;
   }
 
-  .sudoku-cell[data-selected="true"][data-filled="true"] {
-    --cell-bg: rgba(var(--sudoku-accent-rgb), 0.24);
+  .sudoku-cell[data-selected="true"][data-fixed="true"] {
+    --cell-fg: rgb(var(--atelier-primary));
   }
 
   .sudoku-cell:focus-visible {
-    outline: 3px solid rgba(var(--sudoku-accent-rgb), 0.2);
-    outline-offset: -3px;
+    box-shadow:
+      var(--cell-shadow),
+      0 0 0 3px rgba(var(--atelier-primary), 0.2);
   }
 
   .digit-button {
-    @apply flex min-h-[4rem] flex-col items-center justify-center rounded-[1.15rem] border border-slate-200 bg-white px-2 py-2 text-center text-slate-900 shadow-[0_14px_28px_-24px_rgba(15,23,42,0.45)] hover:border-sky-200 hover:bg-sky-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/35 active:scale-[0.98];
+    @apply flex aspect-square min-h-[3.15rem] flex-col items-center justify-center rounded-[1rem] px-1 py-1.5 text-center outline-none md:min-h-[5rem] md:rounded-[1.2rem];
+    background: rgba(var(--atelier-paper), 0.96);
+    color: rgb(var(--atelier-ink));
+    box-shadow:
+      inset 0 0 0 1px rgba(var(--atelier-outline), 0.14),
+      0 12px 20px -18px rgba(25, 28, 30, 0.3);
   }
 
   .digit-button[data-complete="true"] {
-    @apply border-slate-200/90 bg-slate-100 text-slate-500 shadow-none;
+    background: rgba(var(--atelier-surface-low), 0.94);
+    color: rgba(var(--atelier-muted), 0.6);
+    box-shadow: inset 0 0 0 1px rgba(var(--atelier-outline), 0.12);
   }
 
-  .digit-clear {
-    @apply inline-flex min-h-[2.9rem] items-center justify-center rounded-[1.15rem] border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-sky-200 hover:bg-sky-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/35 active:translate-y-[1px];
+  .digit-button[data-active="true"] {
+    background: linear-gradient(180deg, rgb(var(--atelier-primary)), rgb(var(--atelier-primary-container)));
+    color: rgba(var(--atelier-paper), 1);
+    box-shadow:
+      0 18px 26px -18px rgba(var(--atelier-primary), 0.85),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  }
+
+  .digit-button:hover:not(:disabled):not([data-active="true"]),
+  .digit-button:focus-visible {
+    background: rgba(var(--atelier-primary-fixed), 0.82);
+    box-shadow:
+      inset 0 0 0 1px rgba(var(--atelier-primary), 0.12),
+      0 16px 24px -20px rgba(var(--atelier-primary), 0.42);
+  }
+
+  .digit-button__digit {
+    font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+    font-size: 1.25rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .digit-button__meta {
+    margin-top: 0.22rem;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+
+  .sudoku-board {
+    @apply overflow-hidden rounded-[1.7rem] p-2 sm:p-3;
+    background:
+      linear-gradient(180deg, rgba(var(--atelier-surface-low), 1), rgba(var(--atelier-surface-low), 0.94));
+    box-shadow:
+      inset 0 0 0 1px rgba(var(--atelier-outline), 0.16),
+      0 24px 40px -34px rgba(25, 28, 30, 0.28);
+  }
+
+  .sudoku-grid-shell {
+    @apply grid h-full w-full;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .sudoku-block {
+    @apply grid rounded-[1.05rem] p-[2px];
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2px;
+    background: rgba(var(--atelier-surface-high), 0.8);
+    transition:
+      background-color var(--atelier-duration-fast) var(--atelier-ease-standard),
+      box-shadow var(--atelier-duration-base) var(--atelier-ease-emphasis);
+  }
+
+  .sudoku-block[data-active-block="true"] {
+    background: rgba(var(--atelier-surface-highest), 1);
+    box-shadow: 0 12px 22px -20px rgba(var(--atelier-primary), 0.34);
   }
 }
 
