@@ -20,47 +20,6 @@ function makeCellAriaLabel(state: GameState, row: number, col: number): string {
   return `${base}，空格`;
 }
 
-function getCellClasses(
-  value: number,
-  fixed: boolean,
-  highlight: ReturnType<typeof computeHighlights>[number][number]
-): { className: string; style: CSSProperties } {
-  let backgroundColor = fixed ? "rgb(248 250 252)" : "rgb(255 255 255)";
-  let color = fixed ? "rgb(15 23 42)" : "var(--sudoku-user-digit)";
-  let boxShadow = "none";
-
-  if (highlight.peer) {
-    backgroundColor = fixed ? "rgb(241 245 249)" : "var(--sudoku-user-digit-muted)";
-    boxShadow = "inset 0 0 0 1px rgba(var(--sudoku-user-digit-rgb), 0.16)";
-  }
-
-  if (highlight.sameDigit) {
-    backgroundColor = fixed ? "rgba(var(--sudoku-user-digit-rgb), 0.12)" : "var(--sudoku-user-digit-soft)";
-    boxShadow =
-      "inset 0 0 0 2px rgba(var(--sudoku-user-digit-rgb), 0.18), 0 12px 18px -18px rgba(var(--sudoku-user-digit-rgb), 0.72)";
-  }
-
-  if (highlight.lastFilled && !highlight.selected) {
-    boxShadow = "inset 0 0 0 2px rgba(var(--sudoku-user-digit-rgb), 0.26)";
-  }
-
-  if (highlight.selected) {
-    backgroundColor = value === 0 ? "rgba(var(--sudoku-user-digit-rgb), 0.12)" : "var(--sudoku-user-digit-strong)";
-    boxShadow =
-      "inset 0 0 0 2px rgba(var(--sudoku-user-digit-rgb), 0.28), 0 0 0 1px var(--sudoku-user-digit-ring), 0 18px 28px -24px var(--sudoku-user-digit-shadow)";
-  }
-
-  return {
-    className:
-      "grid aspect-square place-items-center border border-slate-300 font-semibold leading-none transition-[background-color,box-shadow,color] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-800/45",
-    style: {
-      backgroundColor,
-      color,
-      boxShadow
-    }
-  };
-}
-
 export function Board({ state, size, onSelectCell }: BoardProps): JSX.Element {
   const highlights = computeHighlights({
     board: state.board,
@@ -83,15 +42,18 @@ export function Board({ state, size, onSelectCell }: BoardProps): JSX.Element {
 
   return (
     <div
-      className="mx-auto overflow-hidden rounded-[1.4rem] border border-slate-300 bg-slate-300 p-[4px] shadow-[0_22px_60px_-28px_rgba(15,23,42,0.45)]"
-      style={{ width: size, height: size, maxWidth: "100%", maxHeight: "100%" }}
+      className="sudoku-board mx-auto overflow-hidden rounded-[1.55rem] border p-[4px]"
+      style={{ width: size, height: size, maxWidth: "100%" }}
     >
-      <div role="grid" aria-label="Sudoku 棋盘" className="grid h-full w-full grid-cols-9 overflow-hidden rounded-[1.1rem] bg-slate-300">
+      <div
+        role="grid"
+        aria-label="Sudoku 棋盘"
+        className="grid h-full w-full grid-cols-9 overflow-hidden rounded-[1.2rem] bg-slate-300/90"
+      >
         {state.board.map((rowValues, row) =>
           rowValues.map((value, col) => {
             const isSelected = state.selectedCell?.row === row && state.selectedCell?.col === col;
             const highlight = highlights[row][col];
-            const presentation = getCellClasses(value, state.fixed[row][col], highlight);
 
             return (
               <button
@@ -105,11 +67,18 @@ export function Board({ state, size, onSelectCell }: BoardProps): JSX.Element {
                 tabIndex={isSelected ? 0 : -1}
                 data-row={row}
                 data-col={col}
-                className={presentation.className}
+                data-filled={value !== 0}
+                data-fixed={state.fixed[row][col]}
+                data-selected={highlight.selected || undefined}
+                data-row-peer={highlight.rowPeer || undefined}
+                data-col-peer={highlight.colPeer || undefined}
+                data-box-peer={highlight.boxPeer || undefined}
+                data-same-digit={highlight.sameDigit || undefined}
+                data-last-filled={highlight.lastFilled && !highlight.selected ? true : undefined}
+                className="sudoku-cell"
                 disabled={state.generating}
                 style={{
-                  fontSize: `clamp(1.02rem, ${Math.max(size * 0.05, 1)}px, 2rem)`,
-                  ...presentation.style,
+                  fontSize: `clamp(1.02rem, ${Math.max(size * 0.05, 1)}px, 2.05rem)`,
                   borderTopWidth: row === 0 || row % 3 === 0 ? "2px" : "1px",
                   borderLeftWidth: col === 0 || col % 3 === 0 ? "2px" : "1px",
                   borderRightWidth: (col + 1) % 3 === 0 ? "2px" : "1px",

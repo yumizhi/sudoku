@@ -26,7 +26,7 @@ function useBoardSize(): {
 
     const calculate = (): void => {
       const rect = boardArea.getBoundingClientRect();
-      const nextSize = Math.max(0, Math.floor(Math.min(rect.width, rect.height)));
+      const nextSize = Math.max(0, Math.floor(rect.width));
       setBoardSize(nextSize);
     };
 
@@ -55,7 +55,7 @@ export default function App(): JSX.Element {
   const statusToneClass =
     state.status === "won"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-      : "border-slate-200 bg-white text-slate-700";
+      : "border-slate-200 bg-slate-50 text-slate-700";
 
   const headerMessage = useMemo(() => {
     if (state.message.text) {
@@ -68,73 +68,83 @@ export default function App(): JSX.Element {
 
     return "选择空格后，可用键盘或下方数字键填入。";
   }, [state.message.text, state.status]);
-  const peerHighlightLabel = state.showPeerHighlights ? "已开启" : "已关闭";
-
+  const headerMessageToneClass =
+    state.message.tone === "warn"
+      ? "border-amber-200 bg-amber-50/90 text-amber-800"
+      : state.status === "won" || state.message.tone === "success"
+        ? "border-emerald-200 bg-emerald-50/90 text-emerald-700"
+        : "border-sky-100 bg-sky-50/85 text-sky-800";
   function handleDigitClick(digit: Digit): void {
     dispatch({ type: "inputDigit", digit });
   }
 
   return (
-    <div className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(148,163,184,0.16),transparent_24%),linear-gradient(180deg,#f8fafc_0%,#e2e8f0_100%)]">
-      <main className="mx-auto grid h-full w-full max-w-[92rem] grid-rows-[auto_minmax(0,1fr)] gap-3 p-3 sm:gap-4 sm:p-4">
-        <header className="panel-surface flex flex-col gap-3 px-3 py-3 sm:px-4 sm:py-3.5 md:flex-row md:items-center md:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-lg font-semibold tracking-tight text-slate-950 sm:text-xl">数独</h1>
-              <span className={["rounded-full border px-2.5 py-1 text-xs font-semibold", statusToneClass].join(" ")}>
-                {statusLabel}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
-                {formatTime(state.elapsedSeconds)}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-slate-600 md:truncate">{headerMessage}</p>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700">
-              <span className="text-xs uppercase tracking-[0.16em] text-slate-500">难度</span>
-              <select
-                value={state.difficulty}
-                disabled={state.generating}
-                className="bg-transparent text-sm font-semibold text-slate-900 outline-none"
-                onChange={(event) =>
-                  dispatch({
-                    type: "setDifficulty",
-                    difficulty: event.target.value as Difficulty
-                  })
-                }
+    <div className="min-h-dvh bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_26%),radial-gradient(circle_at_top_right,rgba(37,99,235,0.08),transparent_20%),linear-gradient(180deg,rgba(248,250,252,0.94)_0%,rgba(241,245,249,0.98)_100%)]">
+      <main className="mx-auto flex min-h-dvh w-full max-w-[96rem] flex-col gap-2.5 px-3 pb-safe pt-safe sm:gap-4 sm:px-4">
+        <header className="panel-surface subtle-enter px-3 py-2.5 sm:px-4 sm:py-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-lg font-semibold tracking-tight text-slate-950 sm:text-xl">数独</h1>
+                <span className={["status-badge", statusToneClass].join(" ")}>{statusLabel}</span>
+                <span className="status-badge border-slate-200 bg-white/80 text-slate-700">
+                  {formatTime(state.elapsedSeconds)}
+                </span>
+              </div>
+              <p
+                role="status"
+                aria-live="polite"
+                className={["mt-2 max-w-3xl rounded-2xl border px-3 py-2 text-sm leading-6", headerMessageToneClass].join(" ")}
               >
-                {Object.entries(DIFFICULTY_CONFIG).map(([key, config]) => (
-                  <option key={key} value={key}>
-                    {config.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+                {headerMessage}
+              </p>
+            </div>
 
-            <button
-              type="button"
-              className="rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/70 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={state.generating}
-              onClick={() => startNewGame()}
-            >
-              新游戏
-            </button>
-            <button
-              type="button"
-              className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-sky-200 hover:bg-sky-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/70 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={state.generating}
-              onClick={() => dispatch({ type: "restartGame" })}
-            >
-              重开
-            </button>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center lg:min-w-[24rem]">
+              <label className="panel-muted col-span-2 flex items-center justify-between gap-3 px-3 py-2.5 sm:col-span-1">
+                <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">难度</span>
+                <select
+                  value={state.difficulty}
+                  disabled={state.generating}
+                  className="min-w-0 bg-transparent text-sm font-semibold text-slate-900 outline-none"
+                  onChange={(event) =>
+                    dispatch({
+                      type: "setDifficulty",
+                      difficulty: event.target.value as Difficulty
+                    })
+                  }
+                >
+                  {Object.entries(DIFFICULTY_CONFIG).map(([key, config]) => (
+                    <option key={key} value={key}>
+                      {config.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <button
+                type="button"
+                className="control-button-primary"
+                disabled={state.generating}
+                onClick={() => startNewGame()}
+              >
+                新游戏
+              </button>
+              <button
+                type="button"
+                className="control-button"
+                disabled={state.generating}
+                onClick={() => dispatch({ type: "restartGame" })}
+              >
+                重开
+              </button>
+            </div>
           </div>
         </header>
 
-        <div className="grid min-h-0 grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_clamp(15rem,28vw,18rem)] md:gap-4">
-          <section className="panel-surface min-h-0 p-2 sm:p-3 lg:p-4">
-            <div ref={boardAreaRef} className="flex h-full w-full items-center justify-center">
+        <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_clamp(18.5rem,30vw,23rem)] lg:gap-4">
+          <section className="panel-surface subtle-enter p-2.5 sm:p-3 lg:p-4">
+            <div ref={boardAreaRef} className="mx-auto w-full max-w-[21.5rem] sm:max-w-[24rem] md:max-w-[31rem] lg:max-w-[42rem]">
               <Board
                 size={boardSize}
                 state={state}
@@ -143,48 +153,18 @@ export default function App(): JSX.Element {
             </div>
           </section>
 
-          <aside className="panel-surface flex min-h-0 flex-col gap-3 px-3 py-3 sm:px-4 sm:py-4">
-            <div className="rounded-[1.4rem] border border-slate-200 bg-white/95 px-3 py-3 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">选中</div>
-                  <div className="mt-1 truncate text-base font-semibold text-slate-950">{selectionLabel}</div>
-                  <div className="mt-1 text-xs text-slate-500">键盘数字、方向键与点按都可用。</div>
-                </div>
-                <span className="shrink-0 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-cyan-700">
-                  同数字自动高亮
-                </span>
-              </div>
-
-              <button
-                type="button"
-                role="switch"
-                aria-checked={state.showPeerHighlights}
-                className="mt-3 flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left transition hover:border-sky-200 hover:bg-sky-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/70"
-                onClick={() => dispatch({ type: "togglePeerHighlights" })}
-              >
-                <span>
-                  <span className="block text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">占线高亮</span>
-                  <span className="mt-1 block text-sm font-semibold text-slate-900">行 / 列 / 宫辅助定位</span>
-                </span>
-                <span
-                  className={[
-                    "rounded-full px-2.5 py-1 text-xs font-semibold",
-                    state.showPeerHighlights
-                      ? "bg-sky-600 text-white shadow-[0_10px_20px_-16px_rgba(2,132,199,0.95)]"
-                      : "border border-slate-200 bg-white text-slate-600"
-                  ].join(" ")}
-                >
-                  {peerHighlightLabel}
-                </span>
-              </button>
-            </div>
-
-            <DigitPad
-              state={state}
-              onDigitClick={handleDigitClick}
-              onClear={() => dispatch({ type: "clearCell" })}
-            />
+          <aside className="grid gap-3">
+            <section className="panel-surface subtle-enter px-3 py-2.5 sm:px-4 sm:py-4">
+              <DigitPad
+                state={state}
+                selectionLabel={selectionLabel}
+                filledCount={filledCount}
+                showPeerHighlights={state.showPeerHighlights}
+                onTogglePeerHighlights={() => dispatch({ type: "togglePeerHighlights" })}
+                onDigitClick={handleDigitClick}
+                onClear={() => dispatch({ type: "clearCell" })}
+              />
+            </section>
           </aside>
         </div>
       </main>

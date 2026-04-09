@@ -4,34 +4,56 @@
 
 :root {
   color-scheme: light;
-  --sudoku-user-digit-rgb: 77 0 153;
-  --sudoku-user-digit: rgb(var(--sudoku-user-digit-rgb));
-  --sudoku-user-digit-muted: rgba(var(--sudoku-user-digit-rgb), 0.08);
-  --sudoku-user-digit-soft: rgba(var(--sudoku-user-digit-rgb), 0.14);
-  --sudoku-user-digit-strong: rgba(var(--sudoku-user-digit-rgb), 0.2);
-  --sudoku-user-digit-ring: rgba(var(--sudoku-user-digit-rgb), 0.56);
-  --sudoku-user-digit-shadow: rgba(var(--sudoku-user-digit-rgb), 0.28);
+  --sudoku-accent-rgb: 14 116 217;
+  --sudoku-accent-strong-rgb: 30 64 175;
+  --sudoku-text-rgb: 15 23 42;
+  --sudoku-muted-rgb: 71 85 105;
+  --sudoku-border-rgb: 203 213 225;
+  --sudoku-paper-rgb: 250 247 241;
+  --sudoku-duration-fast: 150ms;
+  --sudoku-duration-base: 220ms;
+  --sudoku-duration-slow: 320ms;
+  --sudoku-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --sudoku-ease-emphasis: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @layer base {
   html,
   body,
   #root {
-    @apply h-full;
+    @apply min-h-full;
+  }
+
+  #root {
+    min-height: 100dvh;
   }
 
   html,
   body {
-    @apply overflow-hidden bg-slate-100;
+    @apply overflow-x-hidden bg-slate-100;
   }
 
   body {
     @apply font-sans text-slate-900 antialiased;
+    background:
+      radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 28%),
+      linear-gradient(180deg, rgba(var(--sudoku-paper-rgb), 0.92), rgba(241, 245, 249, 0.94));
   }
 
   button,
   select {
     @apply touch-manipulation;
+    transition:
+      background-color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
+      border-color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
+      box-shadow var(--sudoku-duration-base) var(--sudoku-ease-emphasis),
+      color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
+      transform var(--sudoku-duration-fast) var(--sudoku-ease-standard);
+  }
+
+  button:disabled,
+  select:disabled {
+    @apply cursor-not-allowed opacity-60;
   }
 
   ::selection {
@@ -41,6 +63,194 @@
 
 @layer components {
   .panel-surface {
-    @apply rounded-[1.5rem] border border-white/80 bg-white/75 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.35)] backdrop-blur;
+    @apply rounded-[1.6rem] border border-white/80 bg-white/85 shadow-[0_24px_60px_-34px_rgba(15,23,42,0.36)] backdrop-blur;
+    transition:
+      border-color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
+      box-shadow var(--sudoku-duration-base) var(--sudoku-ease-emphasis),
+      background-color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
+      transform var(--sudoku-duration-base) var(--sudoku-ease-emphasis);
+  }
+
+  .panel-muted {
+    @apply rounded-[1.2rem] border border-slate-200/85 bg-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)];
+  }
+
+  .control-button {
+    @apply inline-flex min-h-[2.875rem] items-center justify-center rounded-[1.15rem] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.45)] hover:border-sky-200 hover:bg-sky-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/35 active:translate-y-[1px];
+  }
+
+  .control-button-primary {
+    @apply inline-flex min-h-[2.875rem] items-center justify-center rounded-[1.15rem] border border-sky-700 bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_28px_-22px_rgba(3,105,161,0.75)] hover:border-sky-800 hover:bg-sky-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/35 active:translate-y-[1px];
+  }
+
+  .status-badge {
+    @apply inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold shadow-[0_10px_24px_-22px_rgba(15,23,42,0.45)];
+  }
+
+  .toggle-track {
+    @apply relative flex h-7 w-12 items-center rounded-full border border-slate-300 bg-slate-200/80 px-1 shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)];
+    transition:
+      background-color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
+      border-color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
+      box-shadow var(--sudoku-duration-base) var(--sudoku-ease-emphasis);
+  }
+
+  .toggle-track.is-on {
+    @apply border-sky-200 bg-sky-100 shadow-[0_10px_24px_-20px_rgba(2,132,199,0.7),inset_0_1px_0_rgba(255,255,255,0.75)];
+  }
+
+  .toggle-thumb {
+    @apply block h-5 w-5 rounded-full bg-white shadow-[0_6px_16px_-10px_rgba(15,23,42,0.45)];
+    transform: translateX(0);
+    transition:
+      transform var(--sudoku-duration-base) var(--sudoku-ease-emphasis),
+      background-color var(--sudoku-duration-fast) var(--sudoku-ease-standard);
+  }
+
+  .toggle-track.is-on .toggle-thumb {
+    @apply bg-sky-600;
+    transform: translateX(1.2rem);
+  }
+
+  .subtle-enter {
+    animation: panel-rise var(--sudoku-duration-slow) var(--sudoku-ease-emphasis) both;
+  }
+
+  .sudoku-board {
+    border-color: rgba(148, 163, 184, 0.82);
+    background:
+      linear-gradient(180deg, rgba(226, 232, 240, 0.92), rgba(203, 213, 225, 0.88));
+    box-shadow:
+      0 28px 64px -34px rgba(15, 23, 42, 0.46),
+      0 18px 34px -30px rgba(14, 116, 217, 0.38);
+    transition:
+      box-shadow var(--sudoku-duration-base) var(--sudoku-ease-emphasis),
+      transform var(--sudoku-duration-base) var(--sudoku-ease-emphasis);
+  }
+
+  .sudoku-cell {
+    --cell-bg: rgba(255, 255, 255, 0.96);
+    --cell-fg: rgb(var(--sudoku-accent-strong-rgb));
+    --cell-shadow: none;
+    --cell-overlay: none;
+    --cell-scale: 1;
+
+    @apply relative grid aspect-square place-items-center border font-semibold leading-none outline-none;
+    border-color: rgba(var(--sudoku-border-rgb), 0.84);
+    background-color: var(--cell-bg);
+    background-image: var(--cell-overlay);
+    color: var(--cell-fg);
+    box-shadow: var(--cell-shadow);
+    transform: translateZ(0) scale(var(--cell-scale));
+    transition:
+      background-color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
+      background-image var(--sudoku-duration-fast) var(--sudoku-ease-standard),
+      color var(--sudoku-duration-fast) var(--sudoku-ease-standard),
+      box-shadow var(--sudoku-duration-base) var(--sudoku-ease-emphasis),
+      transform var(--sudoku-duration-base) var(--sudoku-ease-emphasis);
+  }
+
+  .sudoku-cell[data-fixed="true"] {
+    --cell-bg: rgba(248, 250, 252, 0.96);
+    --cell-fg: rgb(var(--sudoku-text-rgb));
+  }
+
+  .sudoku-cell[data-row-peer="true"] {
+    --cell-bg: rgba(var(--sudoku-accent-rgb), 0.05);
+    --cell-overlay: linear-gradient(180deg, rgba(var(--sudoku-accent-rgb), 0.02), rgba(var(--sudoku-accent-rgb), 0.075));
+  }
+
+  .sudoku-cell[data-col-peer="true"] {
+    --cell-bg: rgba(var(--sudoku-accent-rgb), 0.05);
+    --cell-overlay: linear-gradient(90deg, rgba(var(--sudoku-accent-rgb), 0.02), rgba(var(--sudoku-accent-rgb), 0.075));
+  }
+
+  .sudoku-cell[data-box-peer="true"] {
+    --cell-shadow: inset 0 0 0 1px rgba(var(--sudoku-accent-rgb), 0.08);
+  }
+
+  .sudoku-cell[data-box-peer="true"][data-row-peer="true"],
+  .sudoku-cell[data-box-peer="true"][data-col-peer="true"] {
+    --cell-bg: rgba(var(--sudoku-accent-rgb), 0.068);
+  }
+
+  .sudoku-cell[data-same-digit="true"] {
+    --cell-bg: rgba(var(--sudoku-accent-rgb), 0.14);
+    --cell-overlay: none;
+    --cell-shadow:
+      inset 0 0 0 1px rgba(var(--sudoku-accent-rgb), 0.16),
+      0 10px 18px -18px rgba(var(--sudoku-accent-rgb), 0.45);
+  }
+
+  .sudoku-cell[data-last-filled="true"] {
+    --cell-shadow:
+      inset 0 0 0 1.5px rgba(var(--sudoku-accent-rgb), 0.24),
+      0 12px 18px -18px rgba(var(--sudoku-accent-rgb), 0.3);
+  }
+
+  .sudoku-cell[data-selected="true"] {
+    --cell-bg: rgba(var(--sudoku-accent-rgb), 0.2);
+    --cell-fg: rgb(var(--sudoku-accent-strong-rgb));
+    --cell-overlay: none;
+    --cell-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.84),
+      inset 0 0 0 2px rgba(var(--sudoku-accent-rgb), 0.42),
+      0 16px 28px -20px rgba(var(--sudoku-accent-rgb), 0.52);
+    --cell-scale: 1.02;
+    z-index: 1;
+  }
+
+  .sudoku-cell[data-selected="true"][data-filled="true"] {
+    --cell-bg: rgba(var(--sudoku-accent-rgb), 0.24);
+  }
+
+  .sudoku-cell:focus-visible {
+    outline: 3px solid rgba(var(--sudoku-accent-rgb), 0.2);
+    outline-offset: -3px;
+  }
+
+  .digit-button {
+    @apply flex min-h-[4rem] flex-col items-center justify-center rounded-[1.15rem] border border-slate-200 bg-white px-2 py-2 text-center text-slate-900 shadow-[0_14px_28px_-24px_rgba(15,23,42,0.45)] hover:border-sky-200 hover:bg-sky-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/35 active:scale-[0.98];
+  }
+
+  .digit-button[data-complete="true"] {
+    @apply border-slate-200/90 bg-slate-100 text-slate-500 shadow-none;
+  }
+
+  .digit-clear {
+    @apply inline-flex min-h-[2.9rem] items-center justify-center rounded-[1.15rem] border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-sky-200 hover:bg-sky-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/35 active:translate-y-[1px];
+  }
+}
+
+@layer utilities {
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top, 0px), 0.75rem);
+  }
+
+  .pb-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  }
+}
+
+@keyframes panel-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
   }
 }

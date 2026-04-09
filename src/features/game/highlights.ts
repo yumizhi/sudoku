@@ -2,7 +2,9 @@ import type { CellPosition, Digit, Grid } from "../../domain/sudoku";
 
 export interface CellHighlight {
   selected: boolean;
-  peer: boolean;
+  rowPeer: boolean;
+  colPeer: boolean;
+  boxPeer: boolean;
   sameDigit: boolean;
   lastFilled: boolean;
 }
@@ -24,6 +26,7 @@ export function computeHighlights({
 }: HighlightInput): CellHighlight[][] {
   return Array.from({ length: 9 }, (_, row) =>
     Array.from({ length: 9 }, (_, col) => {
+      const selected = selectedCell?.row === row && selectedCell?.col === col;
       const inSameRow = selectedCell ? selectedCell.row === row : false;
       const inSameCol = selectedCell ? selectedCell.col === col : false;
       const inSameBox = selectedCell
@@ -32,12 +35,10 @@ export function computeHighlights({
         : false;
 
       return {
-        selected: selectedCell?.row === row && selectedCell?.col === col,
-        peer:
-          showPeerHighlights &&
-          !!selectedCell &&
-          !(selectedCell.row === row && selectedCell.col === col) &&
-          (inSameRow || inSameCol || inSameBox),
+        selected,
+        rowPeer: showPeerHighlights && !!selectedCell && !selected && inSameRow,
+        colPeer: showPeerHighlights && !!selectedCell && !selected && inSameCol,
+        boxPeer: showPeerHighlights && !!selectedCell && !selected && inSameBox,
         sameDigit: highlightedDigit !== null && board[row][col] === highlightedDigit,
         lastFilled: lastFilledCell?.row === row && lastFilledCell?.col === col
       };
