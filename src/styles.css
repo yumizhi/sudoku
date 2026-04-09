@@ -77,10 +77,10 @@
   .panel-surface {
     @apply rounded-[1.75rem] backdrop-blur;
     background:
-      linear-gradient(180deg, rgba(var(--atelier-paper), 0.8), rgba(var(--atelier-paper), 0.66));
+      linear-gradient(180deg, rgba(var(--atelier-paper), 0.94), rgba(var(--atelier-surface-low), 0.9));
     box-shadow:
-      0 20px 40px rgba(25, 28, 30, 0.06),
-      inset 0 0 0 1px rgba(var(--atelier-outline), 0.16);
+      0 22px 44px rgba(25, 28, 30, 0.08),
+      inset 0 0 0 1px rgba(var(--atelier-outline), 0.22);
     transition:
       box-shadow var(--atelier-duration-base) var(--atelier-ease-emphasis),
       background-color var(--atelier-duration-fast) var(--atelier-ease-standard),
@@ -90,9 +90,9 @@
   .panel-muted {
     @apply rounded-[1.2rem];
     background:
-      linear-gradient(180deg, rgba(var(--atelier-surface-low), 0.94), rgba(var(--atelier-paper), 0.9));
+      linear-gradient(180deg, rgba(var(--atelier-surface-high), 0.78), rgba(var(--atelier-paper), 0.96));
     box-shadow:
-      inset 0 0 0 1px rgba(var(--atelier-outline), 0.14),
+      inset 0 0 0 1px rgba(var(--atelier-outline), 0.2),
       inset 0 1px 0 rgba(255, 255, 255, 0.65);
   }
 
@@ -197,7 +197,7 @@
   .sudoku-cell {
     --cell-bg: rgba(var(--atelier-paper), 0.98);
     --cell-fg: rgb(var(--atelier-primary-container));
-    --cell-shadow: none;
+    --cell-shadow: inset 0 0 0 1px rgba(var(--atelier-outline), 0.22);
     --cell-translate: translateY(0);
 
     @apply relative grid aspect-square min-h-0 place-items-center rounded-[0.72rem] leading-none outline-none;
@@ -223,10 +223,11 @@
   .sudoku-cell[data-row-peer="true"],
   .sudoku-cell[data-col-peer="true"] {
     --cell-bg: rgba(var(--atelier-surface-highest), 0.96);
+    --cell-shadow: inset 0 0 0 1px rgba(var(--atelier-outline), 0.24);
   }
 
   .sudoku-cell[data-box-peer="true"] {
-    --cell-bg: rgba(var(--atelier-surface-high), 0.92);
+    --cell-bg: rgba(var(--atelier-surface-high), 0.96);
   }
 
   .sudoku-cell[data-box-peer="true"][data-row-peer="true"],
@@ -243,7 +244,9 @@
   }
 
   .sudoku-cell[data-last-filled="true"] {
-    --cell-shadow: inset 0 0 0 1px rgba(var(--atelier-primary), 0.18);
+    --cell-shadow:
+      inset 0 0 0 1px rgba(var(--atelier-outline), 0.22),
+      inset 0 0 0 2px rgba(var(--atelier-primary), 0.18);
   }
 
   .sudoku-cell[data-selected="true"] {
@@ -316,10 +319,10 @@
   .sudoku-board {
     @apply overflow-hidden rounded-[1.7rem] p-2 sm:p-3;
     background:
-      linear-gradient(180deg, rgba(var(--atelier-surface-low), 1), rgba(var(--atelier-surface-low), 0.94));
+      linear-gradient(180deg, rgba(var(--atelier-surface-high), 0.96), rgba(var(--atelier-surface-low), 1));
     box-shadow:
-      inset 0 0 0 1px rgba(var(--atelier-outline), 0.16),
-      0 24px 40px -34px rgba(25, 28, 30, 0.28);
+      inset 0 0 0 1px rgba(var(--atelier-outline), 0.24),
+      0 24px 40px -30px rgba(25, 28, 30, 0.24);
   }
 
   .sudoku-grid-shell {
@@ -331,15 +334,17 @@
     @apply grid rounded-[1.05rem] p-[2px];
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 2px;
-    background: rgba(var(--atelier-surface-high), 0.8);
+    background: rgba(var(--atelier-surface-highest), 0.9);
     transition:
       background-color var(--atelier-duration-fast) var(--atelier-ease-standard),
       box-shadow var(--atelier-duration-base) var(--atelier-ease-emphasis);
   }
 
   .sudoku-block[data-active-block="true"] {
-    background: rgba(var(--atelier-surface-highest), 1);
-    box-shadow: 0 12px 22px -20px rgba(var(--atelier-primary), 0.34);
+    background: rgba(var(--atelier-primary-fixed), 0.52);
+    box-shadow:
+      inset 0 0 0 1px rgba(var(--atelier-primary), 0.08),
+      0 12px 22px -20px rgba(var(--atelier-primary), 0.34);
   }
 }
 
