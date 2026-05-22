@@ -1,9 +1,20 @@
-import { cloneGrid, deriveFixedGrid, makeBoolGrid, makeGrid } from "../../domain/sudoku";
-import type { CellPosition, Difficulty, Digit } from "../../domain/sudoku";
-import type { GameLoadPayload, GameState, MessageState } from "./types";
+import {
+  HISTORY_LIMIT,
+  cloneGrid,
+  cloneNotes,
+  clearPeerNotes,
+  deriveFixedGrid,
+  findHint,
+  makeBoolGrid,
+  makeGrid,
+  makeNoteGrid,
+  normalizeNotes,
+  toggleNote
+} from "../../domain/sudoku";
+import type { CellPosition, Digit } from "../../domain/sudoku";
+import type { GameLoadPayload, GameState, MessageState, UndoSnapshot } from "./types";
 
 export type GameAction =
-  | { type: "setDifficulty"; difficulty: Difficulty }
   | { type: "setGenerating"; generating: boolean; message?: MessageState }
   | { type: "loadGame"; payload: GameLoadPayload }
   | { type: "replaceState"; state: GameState }
@@ -12,8 +23,9 @@ export type GameAction =
   | { type: "moveSelection"; deltaRow: number; deltaCol: number }
   | { type: "inputDigit"; digit: Digit }
   | { type: "clearCell" }
-  | { type: "togglePeerHighlights" }
-  | { type: "restartGame" }
+  | { type: "toggleNotesMode" }
+  | { type: "undo" }
+  | { type: "requestHint" }
   | { type: "clearMessage" };
 
 function createMessage(text: string, tone: MessageState["tone"] = "info"): MessageState {
@@ -59,6 +71,21 @@ function withSolvedState(state: GameState): GameState {
   };
 }
 
+function createUndoSnapshot(state: GameState): UndoSnapshot {
+  return {
+    board: cloneGrid(state.board),
+    notes: cloneNotes(state.notes),
+    selectedCell: state.selectedCell,
+    highlightedDigit: state.highlightedDigit,
+    lastFilledCell: state.lastFilledCell,
+    status: state.status
+  };
+}
+
+function appendUndo(state: GameState): UndoSnapshot[] {
+  return [...state.undoStack, createUndoSnapshot(state)].slice(-HISTORY_LIMIT);
+}
+
 export function formatTime(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -78,20 +105,23 @@ export function createInitialGameState(): GameState {
     puzzle: makeGrid(0),
     solution: makeGrid(0),
     board: makeGrid(0),
+    notes: makeNoteGrid(),
     fixed: makeBoolGrid(false),
     selectedCell: null,
     highlightedDigit: null,
-    showPeerHighlights: true,
+    notesMode: false,
     lastFilledCell: null,
     elapsedSeconds: 0,
     status: "idle",
     generating: false,
-    message: createMessage("正在准备棋盘…")
+    message: createMessage("正在准备棋盘…"),
+    undoStack: []
   };
 }
 
 export function createGameStateFromPayload(payload: GameLoadPayload): GameState {
   const board = payload.board ? cloneGrid(payload.board) : cloneGrid(payload.puzzle);
+  const notes = payload.notes ? normalizeNotes(payload.notes) : makeNoteGrid();
   const selectedCell = payload.selectedCell ?? findFirstEditableCell(payload.puzzle, board);
   const selectedValue = selectedCell ? board[selectedCell.row][selectedCell.col] : 0;
 
@@ -101,15 +131,17 @@ export function createGameStateFromPayload(payload: GameLoadPayload): GameState 
     puzzle: cloneGrid(payload.puzzle),
     solution: cloneGrid(payload.solution),
     board,
+    notes,
     fixed: deriveFixedGrid(payload.puzzle),
     selectedCell,
     highlightedDigit: selectedValue === 0 ? null : (selectedValue as Digit),
-    showPeerHighlights: payload.showPeerHighlights ?? true,
+    notesMode: payload.notesMode ?? false,
     lastFilledCell: null,
     elapsedSeconds: payload.elapsedSeconds ?? 0,
     status: payload.status ?? "playing",
     generating: false,
-    message: payload.message ?? createMessage("新棋盘已准备好。")
+    message: payload.message ?? createMessage("新棋盘已准备好。"),
+    undoStack: []
   };
 }
 
@@ -164,15 +196,51 @@ function inputDigitState(state: GameState, digit: Digit): GameState {
     };
   }
 
+  if (state.notesMode) {
+    if (state.board[row][col] !== 0) {
+      return {
+        ...state,
+        message: createMessage("已有数字的格子不能写候选数。", "warn")
+      };
+    }
+
+    const notes = cloneNotes(state.notes);
+    toggleNote(notes, row, col, digit);
+    const isAdded = notes[row][col].includes(digit);
+
+    return {
+      ...state,
+      notes,
+      selectedCell: cell,
+      highlightedDigit: digit,
+      lastFilledCell: null,
+      undoStack: appendUndo(state),
+      message: createMessage(isAdded ? `已记录候选 ${digit}。` : `已移除候选 ${digit}。`)
+    };
+  }
+
+  if (state.board[row][col] === digit) {
+    return {
+      ...state,
+      highlightedDigit: digit,
+      message: createMessage(`当前格已经是 ${digit}。`)
+    };
+  }
+
   const board = cloneGrid(state.board);
+  const notes = cloneNotes(state.notes);
   board[row][col] = digit;
+  notes[row][col] = [];
+  clearPeerNotes(notes, row, col, digit);
 
   return withSolvedState({
     ...state,
     board,
+    notes,
     selectedCell: cell,
     highlightedDigit: digit,
     lastFilledCell: cell,
+    undoStack: appendUndo(state),
     message: createMessage(`已填入 ${digit}。`)
   });
 }
@@ -191,33 +259,50 @@ function clearCellState(state: GameState): GameState {
     };
   }
 
-  if (state.board[row][col] === 0) {
+  if (state.board[row][col] === 0 && state.notes[row][col].length === 0) {
     return state;
   }
 
   const board = cloneGrid(state.board);
-  board[row][col] = 0;
+  const notes = cloneNotes(state.notes);
+  const hadValue = board[row][col] !== 0;
+  if (hadValue) {
+    board[row][col] = 0;
+  } else {
+    notes[row][col] = [];
+  }
 
   return {
     ...state,
     board,
+    notes,
     highlightedDigit: null,
     lastFilledCell: cell,
     status: "playing",
-    message: createMessage("已清除当前格。")
+    undoStack: appendUndo(state),
+    message: createMessage(hadValue ? "已清除当前格。" : "已清除当前格笔记。")
   };
 }
 
-function restartGameState(state: GameState): GameState {
+function undoState(state: GameState): GameState {
+  const snapshot = state.undoStack[state.undoStack.length - 1];
+  if (!snapshot) {
+    return {
+      ...state,
+      message: createMessage("没有可撤销的操作。")
+    };
+  }
+
   return {
     ...state,
-    board: cloneGrid(state.puzzle),
-    selectedCell: findFirstEditableCell(state.puzzle, state.puzzle),
-    highlightedDigit: null,
-    lastFilledCell: null,
-    elapsedSeconds: 0,
-    status: "playing",
-    message: createMessage("已重新开始当前棋盘。")
+    board: cloneGrid(snapshot.board),
+    notes: cloneNotes(snapshot.notes),
+    selectedCell: snapshot.selectedCell,
+    highlightedDigit: snapshot.highlightedDigit,
+    lastFilledCell: snapshot.lastFilledCell,
+    status: snapshot.status,
+    undoStack: state.undoStack.slice(0, -1),
+    message: createMessage("已撤销上一步。")
   };
 }
 
@@ -250,12 +335,6 @@ export function getFilledCount(state: GameState): number {
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
-    case "setDifficulty":
-      return {
-        ...state,
-        difficulty: action.difficulty
-      };
-
     case "setGenerating":
       return {
         ...state,
@@ -291,15 +370,32 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "clearCell":
       return clearCellState(state);
 
-    case "togglePeerHighlights":
+    case "toggleNotesMode":
       return {
         ...state,
-        showPeerHighlights: !state.showPeerHighlights,
-        message: createMessage(state.showPeerHighlights ? "已关闭占线高亮。" : "已开启占线高亮。")
+        notesMode: !state.notesMode,
+        message: createMessage(state.notesMode ? "已关闭笔记模式。" : "已开启笔记模式。")
       };
 
-    case "restartGame":
-      return restartGameState(state);
+    case "undo":
+      return undoState(state);
+
+    case "requestHint": {
+      const hint = findHint(state.board, state.solution);
+      if (!hint) {
+        return {
+          ...state,
+          message: createMessage("当前棋盘已经没有可提示的空格。", "success")
+        };
+      }
+
+      return {
+        ...state,
+        selectedCell: { row: hint.row, col: hint.col },
+        highlightedDigit: hint.value,
+        message: createMessage(hint.summary)
+      };
+    }
 
     case "clearMessage":
       return {

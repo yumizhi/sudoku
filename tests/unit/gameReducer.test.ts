@@ -123,10 +123,30 @@ describe("gameReducer", () => {
     expect(state.highlightedDigit).toBe(5);
   });
 
-  it("toggles peer highlighting independently from same-digit highlighting", () => {
-    const state = gameReducer(makeState(), { type: "togglePeerHighlights" });
+  it("toggles notes mode independently from same-digit highlighting", () => {
+    const state = gameReducer(makeState(), { type: "toggleNotesMode" });
 
-    expect(state.showPeerHighlights).toBe(false);
-    expect(state.message.text).toBe("已关闭占线高亮。");
+    expect(state.notesMode).toBe(true);
+    expect(state.message.text).toBe("已开启笔记模式。");
+  });
+
+  it("adds candidate notes without filling the cell in notes mode", () => {
+    let state = gameReducer(makeState(), { type: "toggleNotesMode" });
+    state = gameReducer(state, { type: "inputDigit", digit: 5 });
+
+    expect(state.board[0][0]).toBe(0);
+    expect(state.notes[0][0]).toEqual([5]);
+    expect(state.status).toBe("playing");
+  });
+
+  it("undoes the last edit without resetting elapsed time", () => {
+    let state = { ...makeState(), elapsedSeconds: 42 };
+
+    state = gameReducer(state, { type: "inputDigit", digit: 5 });
+    state = gameReducer(state, { type: "undo" });
+
+    expect(state.board[0][0]).toBe(0);
+    expect(state.elapsedSeconds).toBe(42);
+    expect(state.status).toBe("playing");
   });
 });

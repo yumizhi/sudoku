@@ -95,6 +95,18 @@ export function useSudokuGame() {
       }
 
       switch (event.key) {
+        case "n":
+        case "N":
+          dispatch({ type: "toggleNotesMode" });
+          event.preventDefault();
+          break;
+        case "z":
+        case "Z":
+          if (event.metaKey || event.ctrlKey) {
+            dispatch({ type: "undo" });
+            event.preventDefault();
+          }
+          break;
         case "Backspace":
         case "Delete":
         case "0":

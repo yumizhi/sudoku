@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { STORAGE_KEY, gridFromString, gridToString } from "../../src/domain/sudoku";
+import { STORAGE_KEY, gridFromString, gridToString, makeNoteGrid } from "../../src/domain/sudoku";
 import { loadPersistedGame, savePersistedGame } from "../../src/features/game/storage";
 import { createGameStateFromPayload } from "../../src/features/game/gameReducer";
 
@@ -8,7 +8,7 @@ describe("storage", () => {
     window.localStorage.clear();
   });
 
-  it("loads a persisted v5 game snapshot and defaults peer highlighting on", () => {
+  it("loads a persisted v7 game snapshot with notes", () => {
     const puzzle = gridFromString(
       "034678912672195348198342567859761423426853791713924856961537284287419635345286179",
       true
@@ -22,16 +22,21 @@ describe("storage", () => {
       throw new Error("puzzle failed to load");
     }
 
+    const notes = makeNoteGrid();
+    notes[0][0] = [1, 2];
+
     window.localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        version: 5,
+        version: 7,
         difficulty: "medium",
         seed: 7,
         puzzle: gridToString(puzzle),
         solution: gridToString(solution),
         board: gridToString(puzzle),
+        notes,
         selectedCell: { row: 0, col: 0 },
+        notesMode: true,
         elapsedSeconds: 18,
         status: "playing"
       })
@@ -40,11 +45,12 @@ describe("storage", () => {
     const restored = loadPersistedGame();
     expect(restored?.difficulty).toBe("medium");
     expect(restored?.selectedCell).toEqual({ row: 0, col: 0 });
-    expect(restored?.showPeerHighlights).toBe(true);
+    expect(restored?.notes?.[0][0]).toEqual([1, 2]);
+    expect(restored?.notesMode).toBe(true);
     expect(restored?.elapsedSeconds).toBe(18);
   });
 
-  it("saves the current board using the v6 payload", () => {
+  it("saves the current board using the v7 payload", () => {
     const puzzle = gridFromString(
       "034678912672195348198342567859761423426853791713924856961537284287419635345286179",
       true
@@ -58,16 +64,20 @@ describe("storage", () => {
       throw new Error("puzzle failed to load");
     }
 
+    const notes = makeNoteGrid();
+    notes[0][0] = [3, 4];
+
     const state = createGameStateFromPayload({
       difficulty: "medium",
       seed: 2,
       puzzle,
       solution,
-      board: solution,
+      board: puzzle,
+      notes,
       selectedCell: { row: 0, col: 0 },
-      showPeerHighlights: false,
+      notesMode: true,
       elapsedSeconds: 42,
-      status: "won"
+      status: "playing"
     });
 
     savePersistedGame(state);
@@ -77,13 +87,15 @@ describe("storage", () => {
       status: string;
       elapsedSeconds: number;
       selectedCell: { row: number; col: number } | null;
-      showPeerHighlights: boolean;
+      notes: number[][][];
+      notesMode: boolean;
     } | null;
 
-    expect(payload?.version).toBe(6);
-    expect(payload?.status).toBe("won");
+    expect(payload?.version).toBe(7);
+    expect(payload?.status).toBe("playing");
     expect(payload?.elapsedSeconds).toBe(42);
     expect(payload?.selectedCell).toEqual({ row: 0, col: 0 });
-    expect(payload?.showPeerHighlights).toBe(false);
+    expect(payload?.notes?.[0][0]).toEqual([3, 4]);
+    expect(payload?.notesMode).toBe(true);
   });
 });

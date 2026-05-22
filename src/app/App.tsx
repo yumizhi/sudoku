@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { RefObject } from "react";
-import { DIFFICULTY_CONFIG, countClues } from "../domain/sudoku";
-import type { Digit } from "../domain/sudoku";
-import { formatTime, getFilledCount, getSelectedCellLabel } from "../features/game/gameReducer";
+import type { CSSProperties, RefObject } from "react";
+import type { Difficulty, Digit } from "../domain/sudoku";
+import { formatTime, getFilledCount } from "../features/game/gameReducer";
 import { Board } from "../features/game/components/Board";
 import { DigitPad } from "../features/game/components/DigitPad";
 import { useSudokuGame } from "../features/game/useSudokuGame";
@@ -22,7 +21,7 @@ function useBoardSize(): {
 
     const calculate = (): void => {
       const rect = boardArea.getBoundingClientRect();
-      const nextSize = Math.max(0, Math.floor(rect.width));
+      const nextSize = Math.max(0, Math.floor(Math.min(rect.width, rect.height)));
       setBoardSize(nextSize);
     };
 
@@ -41,131 +40,321 @@ function useBoardSize(): {
   return { boardAreaRef, boardSize };
 }
 
+const DIFFICULTY_TABS: Difficulty[] = ["easy", "medium", "hard"];
+
+type UiLanguage = "en" | "zh";
+
+const LANGUAGE_STORAGE_KEY = "sudoku-ui-language";
+
+const UI_TEXT = {
+  en: {
+    difficulty: { easy: "Easy", medium: "Mid", hard: "Hard" },
+    time: "Time",
+    newGame: "New Game",
+    newGameShort: "New",
+    undo: "Undo",
+    erase: "Erase",
+    notes: "Notes",
+    hint: "Hint",
+    selected: "Selected",
+    done: "Done",
+    left: (count: number) => `${count} left`,
+    inputDigit: (digit: Digit) => `Input ${digit}`,
+    toggleNote: (digit: Digit) => `Toggle note ${digit}`,
+    confirmTitle: "Start a new game?",
+    confirmBody: (difficulty: string) =>
+      `Switching to ${difficulty} will start a new puzzle and clear the current board. Continue?`,
+    cancel: "Cancel",
+    confirm: "Start",
+    difficultyTimeLabel: "Difficulty and time",
+    timeLabel: (time: string) => `Time ${time}`,
+    gameTitle: "Sudoku",
+    completeStatus: "Complete. Start a new game to continue.",
+    status: (difficulty: string, time: string) => `${difficulty} · ${time}`,
+    languageLabel: "Language",
+    boardName: "Sudoku board",
+    cellLabel: (row: number, col: number, value: number, fixed: boolean, notes: Digit[]) => {
+      const base = `Row ${row + 1}, column ${col + 1}`;
+      if (value !== 0) {
+        return fixed ? `${base}, given ${value}` : `${base}, current value ${value}`;
+      }
+      if (notes.length > 0) {
+        return `${base}, empty, candidates ${notes.join(" ")}`;
+      }
+      return `${base}, empty`;
+    },
+    progress: (count: number) => `Progress ${count}/81`
+  },
+  zh: {
+    difficulty: { easy: "简单", medium: "中等", hard: "困难" },
+    time: "时间",
+    newGame: "新游戏",
+    newGameShort: "新局",
+    undo: "撤销",
+    erase: "清除",
+    notes: "笔记",
+    hint: "提示",
+    selected: "已选",
+    done: "完成",
+    left: (count: number) => `剩 ${count}`,
+    inputDigit: (digit: Digit) => `输入数字 ${digit}`,
+    toggleNote: (digit: Digit) => `切换候选 ${digit}`,
+    confirmTitle: "切换难度？",
+    confirmBody: (difficulty: string) => `切换到${difficulty}会开始一局新游戏，当前棋盘会被清空。是否确定？`,
+    cancel: "取消",
+    confirm: "确定",
+    difficultyTimeLabel: "难度和时间",
+    timeLabel: (time: string) => `时间 ${time}`,
+    gameTitle: "数独",
+    completeStatus: "已完成，开始新游戏继续。",
+    status: (difficulty: string, time: string) => `${difficulty} · ${time}`,
+    languageLabel: "语言",
+    boardName: "Sudoku 棋盘",
+    cellLabel: (row: number, col: number, value: number, fixed: boolean, notes: Digit[]) => {
+      const base = `第 ${row + 1} 行，第 ${col + 1} 列`;
+      if (value !== 0) {
+        return fixed ? `${base}，题目给定数字 ${value}` : `${base}，当前数字 ${value}`;
+      }
+      if (notes.length > 0) {
+        return `${base}，空格，候选 ${notes.join(" ")}`;
+      }
+      return `${base}，空格`;
+    },
+    progress: (count: number) => `进度 ${count}/81`
+  }
+} as const;
+
+function readInitialLanguage(): UiLanguage {
+  return window.localStorage.getItem(LANGUAGE_STORAGE_KEY) === "zh" ? "zh" : "en";
+}
+
+function translateStatusMessage(message: string, language: UiLanguage): string {
+  if (language === "zh" || message.length === 0) {
+    return message;
+  }
+
+  const exact: Record<string, string> = {
+    "正在准备棋盘…": "Preparing the board...",
+    "正在生成新的棋盘…": "Generating a new puzzle...",
+    "生成棋盘失败，请重试。": "Puzzle generation failed. Try again.",
+    "已恢复上次进度。": "Previous progress restored.",
+    "先选择一个空格。": "Select an empty cell first.",
+    "题目给定格不可修改。": "Given cells cannot be edited.",
+    "已有数字的格子不能写候选数。": "Notes can only be added to empty cells.",
+    "已清除当前格。": "Current cell cleared.",
+    "已清除当前格笔记。": "Current cell notes cleared.",
+    "没有可撤销的操作。": "Nothing to undo.",
+    "已撤销上一步。": "Undid the last move.",
+    "已关闭笔记模式。": "Notes mode off.",
+    "已开启笔记模式。": "Notes mode on.",
+    "当前棋盘已经没有可提示的空格。": "There are no empty cells left to hint."
+  };
+
+  if (exact[message]) {
+    return exact[message];
+  }
+
+  const newGameMatch = message.match(/^新游戏已开始（(.+)，给定 (\d+) 个数字）。$/);
+  if (newGameMatch) {
+    const [, difficulty, count] = newGameMatch;
+    const translatedDifficulty =
+      difficulty === "简单" ? "Easy" : difficulty === "中等" ? "Mid" : difficulty === "困难" ? "Hard" : difficulty;
+    return `New game started (${translatedDifficulty}, ${count} givens).`;
+  }
+
+  const filledMatch = message.match(/^已填入 ([1-9])。$/);
+  if (filledMatch) {
+    return `Entered ${filledMatch[1]}.`;
+  }
+
+  const sameValueMatch = message.match(/^当前格已经是 ([1-9])。$/);
+  if (sameValueMatch) {
+    return `Current cell is already ${sameValueMatch[1]}.`;
+  }
+
+  const addNoteMatch = message.match(/^已记录候选 ([1-9])。$/);
+  if (addNoteMatch) {
+    return `Added note ${addNoteMatch[1]}.`;
+  }
+
+  const removeNoteMatch = message.match(/^已移除候选 ([1-9])。$/);
+  if (removeNoteMatch) {
+    return `Removed note ${removeNoteMatch[1]}.`;
+  }
+
+  const completeMatch = message.match(/^完成！用时 (.+)。$/);
+  if (completeMatch) {
+    return `Complete in ${completeMatch[1]}.`;
+  }
+
+  return message;
+}
+
 export default function App(): JSX.Element {
   const { state, dispatch, startNewGame } = useSudokuGame();
   const { boardAreaRef, boardSize } = useBoardSize();
+  const [language, setLanguage] = useState<UiLanguage>(readInitialLanguage);
+  const [pendingDifficulty, setPendingDifficulty] = useState<Difficulty | null>(null);
 
   const filledCount = getFilledCount(state);
-  const clueCount = countClues(state.puzzle);
-  const remainingCount = 81 - filledCount;
-  const completionPercent = Math.round((filledCount / 81) * 100);
-  const selectionLabel = getSelectedCellLabel(state);
-  const difficultyLabel = DIFFICULTY_CONFIG[state.difficulty].label;
+  const text = UI_TEXT[language];
+  const difficultyIndex = DIFFICULTY_TABS.indexOf(state.difficulty);
+
+  useEffect(() => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+  }, [language]);
 
   const headerMessage = useMemo(() => {
     if (state.message.text) {
-      return state.message.text;
+      return translateStatusMessage(state.message.text, language);
     }
 
     if (state.status === "won") {
-      return "已完成，开始新游戏继续。";
+      return text.completeStatus;
     }
 
-    return "选择空格后，可用键盘或下方数字键填入。";
-  }, [state.message.text, state.status]);
+    return text.status(text.difficulty[state.difficulty], formatTime(state.elapsedSeconds));
+  }, [language, state.difficulty, state.elapsedSeconds, state.message.text, state.status, text]);
 
   function handleDigitClick(digit: Digit): void {
     dispatch({ type: "inputDigit", digit });
   }
 
-  return (
-    <div className="min-h-dvh">
-      <main className="mx-auto flex min-h-dvh w-full max-w-[96rem] flex-col gap-2.5 px-3 pb-safe pt-safe sm:gap-4 sm:px-4 lg:px-6">
-        <header className="panel-surface subtle-enter px-3 py-3 sm:px-5 sm:py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <div className="atelier-kicker">The Mathematical Atelier</div>
-              <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-3">
-                <h1 className="font-[Manrope] text-[1.55rem] font-extrabold tracking-[-0.08em] text-[rgb(var(--atelier-ink))] sm:text-[2.5rem]">
-                  数独
-                </h1>
-                <span className="atelier-chip">{state.status === "won" ? "Puzzle Solved" : "Editorial Play"}</span>
-              </div>
-            </div>
+  function requestDifficulty(difficulty: Difficulty): void {
+    if (difficulty === state.difficulty) {
+      return;
+    }
+    setPendingDifficulty(difficulty);
+  }
 
-            <div className="grid shrink-0 grid-cols-2 gap-2 sm:gap-3">
-              <div className="panel-muted min-w-[6.75rem] px-3 py-2.5 text-right">
-                <div className="atelier-kicker">Difficulty</div>
-                <div className="mt-1 font-[Manrope] text-lg font-extrabold tracking-[-0.04em] text-[rgb(var(--atelier-primary))] sm:text-xl">
-                  {difficultyLabel}
-                </div>
-              </div>
-              <div className="panel-muted min-w-[6.75rem] px-3 py-2.5 text-right">
-                <div className="atelier-kicker">Timer</div>
-                <div className="mt-1 font-[Manrope] text-lg font-extrabold tracking-[-0.04em] text-[rgb(var(--atelier-ink))] sm:text-xl">
-                  {formatTime(state.elapsedSeconds)}
-                </div>
-              </div>
-            </div>
-          </div>
+  function confirmDifficultyChange(): void {
+    if (!pendingDifficulty) {
+      return;
+    }
+
+    startNewGame(pendingDifficulty);
+    setPendingDifficulty(null);
+  }
+
+  function renderDifficultySwitch(): JSX.Element {
+    return (
+      <div
+        className="difficulty-switch"
+        aria-label={text.difficultyTimeLabel}
+        style={{ "--difficulty-index": difficultyIndex } as CSSProperties}
+      >
+        {DIFFICULTY_TABS.map((difficulty) => (
+          <button
+            key={difficulty}
+            type="button"
+            className="difficulty-segment"
+            data-active={state.difficulty === difficulty || undefined}
+            aria-pressed={state.difficulty === difficulty}
+            disabled={state.generating}
+            onClick={() => requestDifficulty(difficulty)}
+          >
+            {text.difficulty[difficulty]}
+          </button>
+        ))}
+        <div className="difficulty-time" aria-label={text.timeLabel(formatTime(state.elapsedSeconds))}>
+          <span>{text.time}</span>
+          <strong>{formatTime(state.elapsedSeconds)}</strong>
+        </div>
+      </div>
+    );
+  }
+
+  function renderLanguageSwitch(): JSX.Element {
+    return (
+      <div className="language-switch" role="group" aria-label={text.languageLabel} data-language={language}>
+        <button type="button" data-active={language === "en" || undefined} onClick={() => setLanguage("en")}>
+          EN
+        </button>
+        <button type="button" data-active={language === "zh" || undefined} onClick={() => setLanguage("zh")}>
+          中
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="game-app h-dvh overflow-hidden">
+      <main className="game-phone">
+        <h1 className="sr-only">{text.gameTitle}</h1>
+
+        <header className="desktop-header subtle-enter">
+          <div aria-hidden="true" />
+          {renderDifficultySwitch()}
+          {renderLanguageSwitch()}
         </header>
 
-        <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_clamp(19rem,28vw,23rem)] xl:gap-4">
-          <section className="panel-surface subtle-enter px-3 py-3 sm:px-5 sm:py-5">
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(9rem,10rem)_minmax(9rem,10rem)]">
-              <p
-                role="status"
-                aria-live="polite"
-                data-tone={state.status === "won" ? "success" : state.message.tone}
-                className="atelier-message"
-              >
-                {headerMessage}
-              </p>
+        <header className="mobile-appbar subtle-enter">
+          <button type="button" aria-label={text.newGame} className="appbar-new-game" disabled={state.generating} onClick={() => startNewGame()}>
+            {text.newGameShort}
+          </button>
+          {renderDifficultySwitch()}
+          {renderLanguageSwitch()}
+        </header>
 
-              <div className="panel-muted hidden flex-col justify-between gap-2 px-3 py-3 sm:flex">
-                <div className="atelier-kicker">Completion</div>
-                <div className="font-[Manrope] text-[1.55rem] font-extrabold tracking-[-0.05em] text-[rgb(var(--atelier-ink))]">
-                  {completionPercent}%
-                </div>
-                <div className="text-xs font-medium text-[rgba(var(--atelier-muted),0.88)]">
-                  已填 {filledCount} / 待填 {remainingCount}
-                </div>
-                <div className="atelier-progress-track" aria-hidden="true">
-                  <span className="atelier-progress-fill" style={{ width: `${completionPercent}%` }} />
-                </div>
-              </div>
+        <p
+          role="status"
+          aria-live="polite"
+          data-tone={state.status === "won" ? "success" : state.message.tone}
+          className="sr-only"
+        >
+          {headerMessage}
+        </p>
 
-              <div className="panel-muted hidden flex-col justify-between gap-2 px-3 py-3 sm:flex">
-                <div className="atelier-kicker">Puzzle Data</div>
-                <div className="font-[Manrope] text-[1.55rem] font-extrabold tracking-[-0.05em] text-[rgb(var(--atelier-primary))]">
-                  {clueCount}
-                </div>
-                <div className="text-xs font-medium text-[rgba(var(--atelier-muted),0.88)]">
-                  给定数字 · Seed {state.seed}
-                </div>
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[rgba(var(--atelier-primary),0.76)]">
-                  {selectionLabel}
-                </div>
-              </div>
-            </div>
-
-            <div ref={boardAreaRef} className="mx-auto mt-3 w-full max-w-[19rem] sm:mt-4 sm:max-w-[28rem] md:max-w-[33rem] lg:max-w-[40rem]">
+        <div className="play-surface">
+          <section className="board-stage subtle-enter">
+            <div ref={boardAreaRef} className="board-measure">
               <Board
                 size={boardSize}
                 state={state}
+                labels={{
+                  grid: text.boardName,
+                  cell: text.cellLabel
+                }}
                 onSelectCell={(row, col) => dispatch({ type: "clickCell", row, col })}
               />
             </div>
           </section>
 
-          <aside className="self-start xl:sticky xl:top-6">
-            <section className="panel-surface subtle-enter px-3 py-3 sm:px-4 sm:py-4">
-              <DigitPad
-                state={state}
-                difficulty={state.difficulty}
-                selectionLabel={selectionLabel}
-                filledCount={filledCount}
-                showPeerHighlights={state.showPeerHighlights}
-                onDifficultyChange={(difficulty) => dispatch({ type: "setDifficulty", difficulty })}
-                onTogglePeerHighlights={() => dispatch({ type: "togglePeerHighlights" })}
-                onDigitClick={handleDigitClick}
-                onClear={() => dispatch({ type: "clearCell" })}
-                onRestart={() => dispatch({ type: "restartGame" })}
-                onNewGame={() => startNewGame()}
-              />
-            </section>
-          </aside>
+          <DigitPad
+            state={state}
+            filledCount={filledCount}
+            labels={text}
+            notesMode={state.notesMode}
+            onToggleNotesMode={() => dispatch({ type: "toggleNotesMode" })}
+            onDigitClick={handleDigitClick}
+            onClear={() => dispatch({ type: "clearCell" })}
+            onUndo={() => dispatch({ type: "undo" })}
+            onHint={() => dispatch({ type: "requestHint" })}
+            onNewGame={() => startNewGame()}
+          />
         </div>
+
+        {pendingDifficulty ? (
+          <div className="confirm-layer" role="presentation">
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="difficulty-confirm-title"
+              className="confirm-dialog"
+            >
+              <h2 id="difficulty-confirm-title">{text.confirmTitle}</h2>
+              <p>{text.confirmBody(text.difficulty[pendingDifficulty])}</p>
+              <div className="confirm-actions">
+                <button type="button" className="confirm-secondary" onClick={() => setPendingDifficulty(null)}>
+                  {text.cancel}
+                </button>
+                <button type="button" className="confirm-primary" disabled={state.generating} onClick={confirmDifficultyChange}>
+                  {text.confirm}
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
       </main>
     </div>
   );

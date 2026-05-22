@@ -4,7 +4,8 @@ import type {
   Difficulty,
   Digit,
   GameStatus,
-  Grid
+  Grid,
+  NotesGrid
 } from "../../domain/sudoku";
 
 export type MessageTone = "info" | "success" | "warn";
@@ -20,15 +21,26 @@ export interface GameState {
   puzzle: Grid;
   solution: Grid;
   board: Grid;
+  notes: NotesGrid;
   fixed: BoolGrid;
   selectedCell: CellPosition | null;
   highlightedDigit: Digit | null;
-  showPeerHighlights: boolean;
+  notesMode: boolean;
   lastFilledCell: CellPosition | null;
   elapsedSeconds: number;
   status: GameStatus;
   generating: boolean;
   message: MessageState;
+  undoStack: UndoSnapshot[];
+}
+
+export interface UndoSnapshot {
+  board: Grid;
+  notes: NotesGrid;
+  selectedCell: CellPosition | null;
+  highlightedDigit: Digit | null;
+  lastFilledCell: CellPosition | null;
+  status: GameStatus;
 }
 
 export interface GameLoadPayload {
@@ -37,8 +49,9 @@ export interface GameLoadPayload {
   puzzle: Grid;
   solution: Grid;
   board?: Grid;
+  notes?: NotesGrid;
   selectedCell?: CellPosition | null;
-  showPeerHighlights?: boolean;
+  notesMode?: boolean;
   elapsedSeconds?: number;
   status?: Extract<GameStatus, "playing" | "won">;
   message?: MessageState;

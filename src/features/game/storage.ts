@@ -1,25 +1,30 @@
-import { STORAGE_KEY, cloneGrid, gridFromString, gridToString } from "../../domain/sudoku";
+import {
+  STORAGE_KEY,
+  cloneGrid,
+  cloneNotes,
+  gridFromString,
+  gridToString,
+  isValidNoteGrid,
+  normalizeNotes
+} from "../../domain/sudoku";
 import type { Difficulty } from "../../domain/sudoku";
 import type { GameLoadPayload, GameState } from "./types";
 
-interface PersistedGameV5 {
-  version: 5;
+interface PersistedGameV7 {
+  version: 7;
   difficulty: Difficulty;
   seed: number;
   puzzle: string;
   solution: string;
   board: string;
+  notes: unknown;
   selectedCell: { row: number; col: number } | null;
+  notesMode: boolean;
   elapsedSeconds: number;
   status: "playing" | "won";
 }
 
-interface PersistedGameV6 extends Omit<PersistedGameV5, "version"> {
-  version: 6;
-  showPeerHighlights: boolean;
-}
-
-type PersistedGame = PersistedGameV5 | PersistedGameV6;
+type PersistedGame = PersistedGameV7;
 
 function isDifficulty(value: unknown): value is Difficulty {
   return value === "easy" || value === "medium" || value === "hard";
@@ -50,22 +55,21 @@ export function loadPersistedGame(): GameLoadPayload | null {
     const puzzle = gridFromString(parsed.puzzle, true);
     const solution = gridFromString(parsed.solution, false);
     const board = gridFromString(parsed.board, true);
-    const showPeerHighlights =
-      parsed.version === 6 ? parsed.showPeerHighlights : parsed.version === 5 ? true : null;
 
     if (
-      (parsed.version !== 5 && parsed.version !== 6) ||
+      parsed.version !== 7 ||
       !isDifficulty(parsed.difficulty) ||
       !Number.isInteger(parsed.seed) ||
       parsed.seed < 1 ||
       !puzzle ||
       !solution ||
       !board ||
+      !isValidNoteGrid(parsed.notes) ||
       !isCell(parsed.selectedCell) ||
       !Number.isInteger(parsed.elapsedSeconds) ||
       parsed.elapsedSeconds < 0 ||
       (parsed.status !== "playing" && parsed.status !== "won") ||
-      typeof showPeerHighlights !== "boolean"
+      typeof parsed.notesMode !== "boolean"
     ) {
       return null;
     }
@@ -76,8 +80,9 @@ export function loadPersistedGame(): GameLoadPayload | null {
       puzzle,
       solution,
       board,
+      notes: normalizeNotes(parsed.notes),
       selectedCell: parsed.selectedCell,
-      showPeerHighlights,
+      notesMode: parsed.notesMode,
       elapsedSeconds: parsed.elapsedSeconds,
       status: parsed.status
     };
@@ -89,15 +94,16 @@ export function loadPersistedGame(): GameLoadPayload | null {
 
 export function savePersistedGame(state: GameState): void {
   try {
-    const payload: PersistedGameV6 = {
-      version: 6,
+    const payload: PersistedGameV7 = {
+      version: 7,
       difficulty: state.difficulty,
       seed: state.seed,
       puzzle: gridToString(state.puzzle),
       solution: gridToString(state.solution),
       board: gridToString(state.board),
+      notes: cloneNotes(state.notes),
       selectedCell: state.selectedCell,
-      showPeerHighlights: state.showPeerHighlights,
+      notesMode: state.notesMode,
       elapsedSeconds: state.elapsedSeconds,
       status: state.status === "won" ? "won" : "playing"
     };
@@ -119,8 +125,9 @@ export function clonePersistedBoard(state: GameState): GameLoadPayload {
     puzzle: cloneGrid(state.puzzle),
     solution: cloneGrid(state.solution),
     board: cloneGrid(state.board),
+    notes: cloneNotes(state.notes),
     selectedCell: state.selectedCell,
-    showPeerHighlights: state.showPeerHighlights,
+    notesMode: state.notesMode,
     elapsedSeconds: state.elapsedSeconds,
     status: state.status === "won" ? "won" : "playing"
   };
