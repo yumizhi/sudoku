@@ -43,8 +43,12 @@ function useBoardSize(): {
 const DIFFICULTY_TABS: Difficulty[] = ["easy", "medium", "hard"];
 
 type UiLanguage = "en" | "zh";
+type NewGameRequest =
+  | { kind: "newGame"; difficulty: Difficulty }
+  | { kind: "difficulty"; difficulty: Difficulty };
 
 const LANGUAGE_STORAGE_KEY = "sudoku-ui-language";
+const SKIP_NEW_GAME_CONFIRM_STORAGE_KEY = "sudoku-skip-new-game-confirm";
 
 const UI_TEXT = {
   en: {
@@ -62,8 +66,10 @@ const UI_TEXT = {
     inputDigit: (digit: Digit) => `Input ${digit}`,
     toggleNote: (digit: Digit) => `Toggle note ${digit}`,
     confirmTitle: "Start a new game?",
-    confirmBody: (difficulty: string) =>
+    confirmNewGameBody: "This will start a new puzzle and clear the current board.",
+    confirmDifficultyBody: (difficulty: string) =>
       `Switching to ${difficulty} will start a new puzzle and clear the current board. Continue?`,
+    dontAskAgain: "Don't ask again",
     cancel: "Cancel",
     confirm: "Start",
     difficultyTimeLabel: "Difficulty and time",
@@ -99,8 +105,10 @@ const UI_TEXT = {
     left: (count: number) => `剩 ${count}`,
     inputDigit: (digit: Digit) => `输入数字 ${digit}`,
     toggleNote: (digit: Digit) => `切换候选 ${digit}`,
-    confirmTitle: "切换难度？",
-    confirmBody: (difficulty: string) => `切换到${difficulty}会开始一局新游戏，当前棋盘会被清空。是否确定？`,
+    confirmTitle: "开始新游戏？",
+    confirmNewGameBody: "这会开始一局新游戏，当前棋盘会被清空。",
+    confirmDifficultyBody: (difficulty: string) => `切换到${difficulty}会开始一局新游戏，当前棋盘会被清空。`,
+    dontAskAgain: "下次不再提示",
     cancel: "取消",
     confirm: "确定",
     difficultyTimeLabel: "难度和时间",
@@ -126,6 +134,22 @@ const UI_TEXT = {
 
 function readInitialLanguage(): UiLanguage {
   return window.localStorage.getItem(LANGUAGE_STORAGE_KEY) === "zh" ? "zh" : "en";
+}
+
+function readSkipNewGameConfirm(): boolean {
+  try {
+    return window.localStorage.getItem(SKIP_NEW_GAME_CONFIRM_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function saveSkipNewGameConfirm(): void {
+  try {
+    window.localStorage.setItem(SKIP_NEW_GAME_CONFIRM_STORAGE_KEY, "true");
+  } catch {
+    // The preference is optional; failing to store it should not block gameplay.
+  }
 }
 
 function translateStatusMessage(message: string, language: UiLanguage): string {
@@ -194,7 +218,9 @@ export default function App(): JSX.Element {
   const { state, dispatch, startNewGame } = useSudokuGame();
   const { boardAreaRef, boardSize } = useBoardSize();
   const [language, setLanguage] = useState<UiLanguage>(readInitialLanguage);
-  const [pendingDifficulty, setPendingDifficulty] = useState<Difficulty | null>(null);
+  const [skipNewGameConfirm, setSkipNewGameConfirm] = useState(readSkipNewGameConfirm);
+  const [pendingNewGameRequest, setPendingNewGameRequest] = useState<NewGameRequest | null>(null);
+  const [skipNewGameConfirmAfterStart, setSkipNewGameConfirmAfterStart] = useState(false);
 
   const filledCount = getFilledCount(state);
   const text = UI_TEXT[language];
@@ -220,20 +246,54 @@ export default function App(): JSX.Element {
     dispatch({ type: "inputDigit", digit });
   }
 
+  function requestNewGame(request: NewGameRequest): void {
+    if (skipNewGameConfirm) {
+      startNewGame(request.difficulty);
+      return;
+    }
+
+    setSkipNewGameConfirmAfterStart(false);
+    setPendingNewGameRequest(request);
+  }
+
   function requestDifficulty(difficulty: Difficulty): void {
     if (difficulty === state.difficulty) {
       return;
     }
-    setPendingDifficulty(difficulty);
+
+    requestNewGame({ kind: "difficulty", difficulty });
   }
 
-  function confirmDifficultyChange(): void {
-    if (!pendingDifficulty) {
+  function requestCurrentDifficultyNewGame(): void {
+    requestNewGame({ kind: "newGame", difficulty: state.difficulty });
+  }
+
+  function cancelNewGameRequest(): void {
+    setPendingNewGameRequest(null);
+    setSkipNewGameConfirmAfterStart(false);
+  }
+
+  function confirmNewGameRequest(): void {
+    if (!pendingNewGameRequest) {
       return;
     }
 
-    startNewGame(pendingDifficulty);
-    setPendingDifficulty(null);
+    if (skipNewGameConfirmAfterStart) {
+      saveSkipNewGameConfirm();
+      setSkipNewGameConfirm(true);
+    }
+
+    startNewGame(pendingNewGameRequest.difficulty);
+    setPendingNewGameRequest(null);
+    setSkipNewGameConfirmAfterStart(false);
+  }
+
+  function getConfirmBody(request: NewGameRequest): string {
+    if (request.kind === "difficulty") {
+      return text.confirmDifficultyBody(text.difficulty[request.difficulty]);
+    }
+
+    return text.confirmNewGameBody;
   }
 
   function renderDifficultySwitch(): JSX.Element {
@@ -289,7 +349,13 @@ export default function App(): JSX.Element {
         </header>
 
         <header className="mobile-appbar subtle-enter">
-          <button type="button" aria-label={text.newGame} className="appbar-new-game" disabled={state.generating} onClick={() => startNewGame()}>
+          <button
+            type="button"
+            aria-label={text.newGame}
+            className="appbar-new-game"
+            disabled={state.generating}
+            onClick={requestCurrentDifficultyNewGame}
+          >
             {text.newGameShort}
           </button>
           {renderDifficultySwitch()}
@@ -330,25 +396,33 @@ export default function App(): JSX.Element {
             onClear={() => dispatch({ type: "clearCell" })}
             onUndo={() => dispatch({ type: "undo" })}
             onHint={() => dispatch({ type: "requestHint" })}
-            onNewGame={() => startNewGame()}
+            onNewGame={requestCurrentDifficultyNewGame}
           />
         </div>
 
-        {pendingDifficulty ? (
+        {pendingNewGameRequest ? (
           <div className="confirm-layer" role="presentation">
             <section
               role="dialog"
               aria-modal="true"
-              aria-labelledby="difficulty-confirm-title"
+              aria-labelledby="new-game-confirm-title"
               className="confirm-dialog"
             >
-              <h2 id="difficulty-confirm-title">{text.confirmTitle}</h2>
-              <p>{text.confirmBody(text.difficulty[pendingDifficulty])}</p>
+              <h2 id="new-game-confirm-title">{text.confirmTitle}</h2>
+              <p>{getConfirmBody(pendingNewGameRequest)}</p>
+              <label className="confirm-checkbox">
+                <input
+                  type="checkbox"
+                  checked={skipNewGameConfirmAfterStart}
+                  onChange={(event) => setSkipNewGameConfirmAfterStart(event.currentTarget.checked)}
+                />
+                <span>{text.dontAskAgain}</span>
+              </label>
               <div className="confirm-actions">
-                <button type="button" className="confirm-secondary" onClick={() => setPendingDifficulty(null)}>
+                <button type="button" className="confirm-secondary" onClick={cancelNewGameRequest}>
                   {text.cancel}
                 </button>
-                <button type="button" className="confirm-primary" disabled={state.generating} onClick={confirmDifficultyChange}>
+                <button type="button" className="confirm-primary" disabled={state.generating} onClick={confirmNewGameRequest}>
                   {text.confirm}
                 </button>
               </div>

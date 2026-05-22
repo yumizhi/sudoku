@@ -460,8 +460,18 @@
     color: rgb(var(--muted));
   }
 
+  .confirm-checkbox {
+    @apply mt-5 flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl px-3 text-sm font-bold;
+    background: rgb(var(--surface-low));
+    color: rgb(var(--muted));
+  }
+
+  .confirm-checkbox input {
+    @apply h-5 w-5 shrink-0 rounded-md accent-[rgb(var(--primary))] outline-none focus-visible:ring-2;
+  }
+
   .confirm-actions {
-    @apply mt-6 grid grid-cols-2 gap-3;
+    @apply mt-4 grid grid-cols-2 gap-3;
   }
 
   .confirm-secondary,
